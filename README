@@ -1,0 +1,29 @@
+fsync is a simple file synchronizer which transmits files over network.
+
+*currently under heavy development*
+
+fsync was tested only on linux. There are plans to porting fsync to windows.
+
+LIBRARY REQUIREMENTS
+====================
+SDL_net
+boost-filesystem
+
+
+BUILDING
+========
+Running make in the top directory will build both server and client.
+If you want to build only server or client go to src/ directory and
+run make. After that go to server or client dir and run make again.
+
+RUNNING
+=======
+After building server/client/both a new directory called bin will be
+created in the top dir. Then just run fsync_server or fsync_client
+(depending on which one you've built). Currently, all configuration
+is hardcoded so if you want to change anything, change it in the
+source code.
+
+
+You can contact me at <gman@codefreax.org>
+
