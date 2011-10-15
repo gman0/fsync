@@ -85,7 +85,7 @@ void LogManager::log(const char * msg, int level, bool stdOutput)
 	logFile.close();
 
 	if (stdOutput)
-		cout << msg << endl;
+		cerr << msg << endl;
 }
 
 void LogManager::log(const string & msg, int level, bool stdOutput)
