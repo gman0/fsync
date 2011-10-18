@@ -46,12 +46,12 @@ int main(int argc, char * argv[])
 
 		/*======== TESTING =========*/
 
-
-
-
 		LogManager::instance("fsync_server.log");
 
-		NetworkManager networkManager(2000);
+		Config config(argc, (const char**)argv, "server.conf");
+		unsigned int port = config.getPort();
+
+		NetworkManager networkManager((port) ? port : 2000);
 		networkManager.openSocket();
 
 		while (1)
