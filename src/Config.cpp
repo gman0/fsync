@@ -19,27 +19,21 @@
 
 #include "Config.h"
 
-int Config::getPortNum() const
+Config::Config(int argc, const char * argv[], const char * configFileName) : ConfigParser(configFileName)
 {
-	return m_port;
 }
 
-int Config::getChunkSize() const
+unsigned int Config::getPort()
 {
-	return m_chunkSize;
+	return ConfigParser::getPort();
 }
 
-bool Config::recursiveFileSearchEnabled() const
+bool Config::recursiveFileSearchEnabled()
 {
-	return m_recursiveFileSearch;
+	return ConfigParser::recursiveFileSearchEnabled();
 }
 
-const char * Config::getLogPath() const
+ID_Path_pairList Config::getPathList()
 {
-	return m_logPath;
-}
-
-std::list<boost::filesystem::path> Config::getPathList() const
-{
-	return m_pathList;
+	return ConfigParser::getPathList();
 }

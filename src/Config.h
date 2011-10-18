@@ -22,32 +22,16 @@
 
 #include <list>
 #include <boost/filesystem.hpp>
+#include "ConfigParser.h"
 
-class Config
+class Config : public ConfigParser
 {
-	private:
-		int m_port;
-		std::list<boost::filesystem::path> m_pathList;
-		const char * m_logPath;
-		bool m_recursiveFileSearch;
-		int m_chunkSize;
-	
 	public:
-		Config(int port, std::list<boost::filesystem::path> & pathList, char * logPath = 0,
-				bool recursiveFileSearch = false, int chunkSize = 0) :
-			m_port(port),
-			m_pathList(pathList),
-			m_logPath(logPath),
-			m_recursiveFileSearch(recursiveFileSearch),
-			m_chunkSize(chunkSize)
-		{}
+		Config(int argc, const char * argv[], const char * configFileName);
 
-		int getPortNum() const;
-		int getChunkSize() const;
-		bool recursiveFileSearchEnabled() const;
-		const char * getLogPath() const;
-		std::list<boost::filesystem::path> getPathList() const;
-
+		unsigned int getPort();
+		bool recursiveFileSearchEnabled();
+		ID_Path_pairList getPathList();
 };
 
 #endif // CONFIG_H
