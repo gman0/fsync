@@ -20,9 +20,9 @@ RUNNING
 =======
 After building server/client/both a new directory called bin will be
 created in the top dir. Then just run fsync_server or fsync_client
-(depending on which one you've built). Currently, all configuration
-is hardcoded so if you want to change anything, change it in the
-source code.
+(depending on which one you've built). You can configure some variables
+trough the configuration file but some vars are still hardcoded - if you
+don't like them, change them in the source code.
 
 
 You can contact me at <gman@codefreax.org>
