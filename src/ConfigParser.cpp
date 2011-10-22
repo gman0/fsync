@@ -140,6 +140,17 @@ bool ConfigParser::isPathIdUnique(const ID_Path_pairList & list, PathId id) cons
 	return true;
 }
 
+bool ConfigParser::isPathAvailable(const ID_Path_pairList & list, PathId id) const
+{
+	for (ID_Path_pairList::const_iterator i = list.begin(); i != list.end(); i++)
+	{
+		if (i->first == abs(id))
+			return true;
+	}
+
+	return false;
+}
+
 ID_Path_pairList ConfigParser::getPathList()
 {
 	list<string> values = m_pairs["path"];
@@ -182,10 +193,21 @@ ID_Path_pairList ConfigParser::getPathList()
 				continue;
 			}
 
-			if (!isPathIdUnique(paths, id))
+			if (id > 0)
 			{
-				reportError(*i, "path ID has to be unique");
-				continue;
+				if (!isPathIdUnique(paths, id))
+				{
+					reportError(*i, "path ID has to be unique");
+					continue;
+				}
+			}
+			else
+			{
+				if (!isPathAvailable(paths, id))
+				{
+					reportError(*i, "no parent path id exists for this excluding path id");
+					continue;
+				}
 			}
 		}
 
