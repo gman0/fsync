@@ -51,7 +51,8 @@ class FSException : public exception
 		void makeErrorMsg()
 		{
 			m_what = m_file;
-			m_what += ':' + m_line;
+			m_what += ':';
+			m_what += m_line;
 			m_what += ": " + m_message;
 		}
 

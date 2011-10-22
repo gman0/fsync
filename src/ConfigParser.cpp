@@ -48,7 +48,8 @@ ConfigParser::ConfigParser(const char * configFile) : m_configFileName(configFil
 	else
 	{
 		string errMsg = "Cannot open configuration file \"";
-		errMsg += configFile + '\"';
+		errMsg += configFile;
+		errMsg += '\"';
 		LogManager::getInstancePtr()->log(errMsg, LogManager::L_ERROR);
 		throw FSException(errMsg, __FILE__, __LINE__);
 	}
@@ -59,7 +60,7 @@ ConfigParser::ConfigParser(const char * configFile) : m_configFileName(configFil
 	generatePairs(configBuffer);
 }
 
-void ConfigParser::generatePairs(string & configBuffer)
+void ConfigParser::generatePairs(const string & configBuffer)
 {
 	list<string> lines, tmplist; // tmplist is a placeholder as the further container for the vaules
 	string tmp;
