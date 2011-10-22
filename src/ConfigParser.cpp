@@ -31,19 +31,19 @@ using namespace boost::filesystem;
 ConfigParser::ConfigParser(const char * configFile) : m_configFileName(configFile)
 {
 	ifstream fin(configFile);
-	char buff[255];
+	string configBuffer;
+	string buff;
 
 	if (fin.is_open())
 	{
 		while (fin.good())
 		{
-			fin.getline(buff, 255);
+			getline(fin, buff);
 
 			// if this isn't just an empty line or a comment
 			if (buff[0] != '\0' && buff[0] != '#')
-				m_configBuffer += buff + '\n';
+				configBuffer += buff + '\n';
 		}
-
 	}
 	else
 	{
@@ -54,18 +54,18 @@ ConfigParser::ConfigParser(const char * configFile) : m_configFileName(configFil
 	}
 
 	fin.close();
+	
 
-
-	generatePairs();
+	generatePairs(configBuffer);
 }
 
-void ConfigParser::generatePairs()
+void ConfigParser::generatePairs(string & configBuffer)
 {
 	list<string> lines, tmplist; // tmplist is a placeholder as the further container for the vaules
 	string tmp;
 
 	// separate lines by \n and fill the lines list with them
-	for (string::const_iterator i = m_configBuffer.begin(); i != m_configBuffer.end(); i++)
+	for (string::const_iterator i = configBuffer.begin(); i != configBuffer.end(); i++)
 	{
 		if (*i != '\n')
 			tmp += *i;
