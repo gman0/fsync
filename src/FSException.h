@@ -30,26 +30,37 @@ using namespace std;
 class FSException : public exception
 {
 	private:
-		const char * m_message;
-		const char * m_file;
+		string m_message;
+		string m_file;
+		string m_what;
 		int m_line;
-	
-	public:
-		FSException(const char * message, const char * file, int line) : m_message(message), m_file(file),
-																		m_line(line)
-		{}
 
-		FSException(const string & message, const char * file, int line) : m_message(message.c_str()),
-																		m_file(file), m_line(line)
-		{}
+	public:
+		FSException(const char * message, const char * file, int line) : m_message(string(message)), m_file(string(file)),
+																		m_line(line)
+		{
+			makeErrorMsg();
+		}
+
+		FSException(const string & message, const char * file, int line) : m_message(message),
+																		m_file(string(file)), m_line(line)
+		{
+			makeErrorMsg();
+		}
+
+		void makeErrorMsg()
+		{
+			m_what = m_file;
+			m_what += ':' + m_line;
+			m_what += ": " + m_message;
+		}
 
 		virtual const char * what() const throw()
 		{
-			stringstream ss;
-			ss << m_file << ":" << m_line << ": " << m_message;
-
-			return ss.str().c_str();
+			return m_what.c_str(); 
 		}
+
+		virtual ~FSException() throw() {}
 };
 
 #endif // FS_EXCEPTION
