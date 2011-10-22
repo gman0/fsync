@@ -39,8 +39,15 @@ typedef std::list<std::pair<PathId, boost::filesystem::path> > ID_Path_pairList;
  * # foo
  *
  * for synchronization paths it's as following example:
- * path ID:PATH		- where ID is * or a number bigger than 0 and PATH is an absolute path to a directory
+ * path ID:PATH		- where ID is * or "any" number but 0 and PATH is an absolute path to a directory
  * 					- also notice that the ID has to be unique (except for the case you enter * as the ID)
+ * 
+ * a path can be also excluded from the path list by inverting the path ID:
+ * path 1:/foo
+ * path -1:bar		- the excluded path is relative to its parent path
+ * 					- notice that the parent path has to be defined in order to exclude a path from it
+ * result: everything in the directory /foo is sync-able but /foo/bar dir/file
+ * 
  *
  * any duplicate lines will be removed
  * only the last definition will take place:
