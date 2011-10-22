@@ -179,7 +179,7 @@ ID_Path_pairList ConfigParser::getPathList()
 
 		tmp = i->substr(0, delimiter);
 
-		// user can set the path ID to an asterisk (*) or a number bigger than 0 (0 is excluded)
+		// user can set the path ID to an asterisk (*) or any number (well, technicly not any number) but 0
 		if (tmp.compare("*") == 0)
 			id = 0;
 		else
@@ -189,7 +189,7 @@ ID_Path_pairList ConfigParser::getPathList()
 			// if user entered something other than * or he actually entered 0
 			if (id == 0)
 			{
-				reportError(*i, "path ID has to be a number bigger than 0 or an asterisk (*)");
+				reportError(*i, "path ID has to be any number but 0 or an asterisk (*)");
 				continue;
 			}
 
