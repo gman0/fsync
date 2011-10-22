@@ -74,7 +74,7 @@ class ConfigParser
 		boost::filesystem::path getFilesDbPath();
 
 	private:
-		void generatePairs(std::string & configBuffer);
+		void generatePairs(const std::string & configBuffer);
 		void reportError(const std::string & where, const std::string & what, bool appendSkipping = true) const;
 		bool isPathIdUnique(const ID_Path_pairList & list, PathId id) const;
 		bool string2bool(const std::string & str) const;
