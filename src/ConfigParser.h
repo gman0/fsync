@@ -28,7 +28,7 @@
 
 
 typedef std::map<std::string, std::list<std::string> >  CFGMap;
-typedef unsigned short int PathId;
+typedef short int PathId;
 typedef std::list<std::pair<PathId, boost::filesystem::path> > ID_Path_pairList;
 
 /*
@@ -77,6 +77,7 @@ class ConfigParser
 		void generatePairs(const std::string & configBuffer);
 		void reportError(const std::string & where, const std::string & what, bool appendSkipping = true) const;
 		bool isPathIdUnique(const ID_Path_pairList & list, PathId id) const;
+		bool isPathAvailable(const ID_Path_pairList & list, PathId id) const;
 		bool string2bool(const std::string & str) const;
 
 		template<class Return> Return checkKey(std::list<std::string> & l, const char * arg = 0);
