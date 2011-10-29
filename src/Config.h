@@ -32,6 +32,8 @@ class Config : public ConfigParser
 		unsigned int getPort();
 		bool recursiveFileSearchEnabled();
 		ID_Path_pairList getPathList();
+		boost::filesystem::path getFilesDbPath();
+		bool forceNoChangeCheck();
 };
 
 #endif // CONFIG_H

@@ -17,7 +17,11 @@
     along with fsync.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <iostream>
 #include "Config.h"
+
+using namespace std;
+using namespace boost::filesystem;
 
 Config::Config(int argc, const char * argv[], const char * configFileName) : ConfigParser(configFileName)
 {
@@ -36,4 +40,14 @@ bool Config::recursiveFileSearchEnabled()
 ID_Path_pairList Config::getPathList()
 {
 	return ConfigParser::getPathList();
+}
+
+path Config::getFilesDbPath()
+{
+	return ConfigParser::getFilesDbPath();
+}
+
+bool Config::forceNoChangeCheck()
+{
+	return true;
 }
