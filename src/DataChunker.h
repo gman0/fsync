@@ -23,12 +23,7 @@
 #include <istream>
 #include <utility>
 #include <SDL/SDL.h>
-
-#define CHUNK_SIZE 2048
-
-#ifndef HASH_LENGTH
-#define HASH_LENGTH 16
-#endif
+#include "defs.h"
 
 class DataChunker
 {

@@ -23,14 +23,7 @@
 #include <SDL/SDL.h>
 #include <boost/filesystem.hpp>
 #include <cstring>
-
-#define BLOCK_SIZE 32448
-#define HEADER_BUFF_SIZE 512
-#define PATH_LENGTH 480
-
-#ifndef HASH_LENGTH
-#define HASH_LENGTH 32
-#endif
+#include "defs.h"
 
 enum PCKT_TYPE_ID
 {
@@ -58,7 +51,7 @@ struct PacketData
 
 struct PacketHeader_Interface
 {
-	char m_path[PATH_LENGTH];
+	char m_path[480];
 };
 
 struct PacketHeader_File : public PacketHeader_Interface {};
