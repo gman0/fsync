@@ -178,6 +178,7 @@ ID_Path_pairList ConfigParser::getPathList()
 		}
 
 		tmp = i->substr(0, delimiter);
+		path p(i->substr(delimiter + 1, i->length() - delimiter - 1));
 
 		// user can set the path ID to an asterisk (*) or any number (well, technicly not any number) but 0
 		if (tmp.compare("*") == 0)
@@ -200,6 +201,11 @@ ID_Path_pairList ConfigParser::getPathList()
 					reportError(*i, "path ID has to be unique");
 					continue;
 				}
+				else if (!p.is_absolute())
+				{
+					reportError(*i, "path has to be absolute");
+					continue;
+				}
 			}
 			else
 			{
@@ -211,7 +217,7 @@ ID_Path_pairList ConfigParser::getPathList()
 			}
 		}
 
-		paths.push_back(pair<PathId, path>(id, i->substr(delimiter + 1, i->length() - delimiter - 1)));
+		paths.push_back(pair<PathId, path>(id, p));
 	}
 
 	return paths;
