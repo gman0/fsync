@@ -119,7 +119,10 @@ bool PathTransform::isExcluded(const path & currentPath, PathId pathId)
 		for (int j = 0; j < excldPartsSize; j++)
 		{
 			if (currentPathParts[j] != absoluteExcldParts[j])
+			{
 				isExcluded = false;
+				break;
+			}
 		}
 
 		if (isExcluded)
