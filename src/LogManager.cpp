@@ -43,6 +43,11 @@ void LogManager::instance(const char * path)
 		m_instance->m_logPath = "fsync_server.log";
 }
 
+void LogManager::destroy()
+{
+	delete m_instance;
+}
+
 LogManager & LogManager::getInstance()
 {
 	return (*m_instance);
