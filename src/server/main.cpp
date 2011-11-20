@@ -26,6 +26,8 @@
 #include "Packet.h"
 #include "PacketContainer.h"
 
+#include "FileGatherer.h"
+
 using namespace std;
 
 int main(int argc, char * argv[])
@@ -33,7 +35,7 @@ int main(int argc, char * argv[])
 	try
 	{
 		/*======== TESTING =========*/
-
+/*
 		const char * fileName = "test.rar";
 
 		ifstream file(fileName, ifstream::in);
@@ -43,19 +45,30 @@ int main(int argc, char * argv[])
 
 		PacketContainer pc(1, PCKT_FILE, sizeof(ph_file), (unsigned char*)&ph_file, file);
 
-
+*/
 		/*======== TESTING =========*/
 
 		LogManager::instance("fsync_server.log");
 
 		Config config(argc, (const char**)argv, "server.conf");
-		unsigned int port = config.getPort();
+		//unsigned int port = config.getPort();
+		ID_Path_pairList pathList = config.getPathList();
 
-		NetworkManager networkManager((port) ? port : 2000);
+		for (ID_Path_pairList::const_iterator i = pathList.begin(); i != pathList.end(); i++)
+		{
+			cout << i->first << ": " << i->second << endl;
+		}
+
+		cout << "===\n\n";
+
+		//FileGatherer fg(&config);
+/*
+		NetworkManager networkManager((port) ? port : 2000); // FIXME: see Valgrind output
 		networkManager.openSocket();
 
 		while (1)
 		{
+			break;
 			if (networkManager.acceptConnection())
 				cout << "client connected\n";
 			else
@@ -71,6 +84,9 @@ int main(int argc, char * argv[])
 
 			networkManager.closeConnection();
 		}
+*/
+
+		LogManager::getInstancePtr()->destroy();
 	}
 	catch (FSException & e)
 	{
