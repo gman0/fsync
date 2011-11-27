@@ -7,7 +7,8 @@ fsync was tested only on linux. There are plans to porting fsync to windows.
 LIBRARY REQUIREMENTS
 ====================
 SDL_net
-boost-filesystem
+boost_filesystem
+boost_thread (server)
 
 
 BUILDING
