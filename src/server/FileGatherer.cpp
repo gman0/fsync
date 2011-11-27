@@ -156,15 +156,17 @@ void FileGatherer::createFileList(const ID_Path_pairList & path_pairList)
 						size = ht_ptr->size();
 					}
 
+//cout << "size: " << size << endl;
+
 					if (size > 0)
 					{
-						for (HashTree::const_iterator t_it = ht_ptr->begin(); t_it != ht_ptr->end(); t_it++)
-						{
-							if (*t_it)
-							{
-								bool found = false;
+						bool found = false;
 
-								for (HashLeaf::const_iterator l_it = (*t_it)->begin(); l_it != (*t_it)->end(); l_it++)
+						for (HashTree::iterator t_it = ht_ptr->begin(); t_it != ht_ptr->end(); t_it++)
+						{
+							if ((*t_it))
+							{
+								for (HashLeaf::iterator l_it = (*t_it)->begin(); l_it != (*t_it)->end(); l_it++)
 								{
 									if ((*l_it)->m_hash == fiProxy.m_hash)
 									{
@@ -174,15 +176,15 @@ void FileGatherer::createFileList(const ID_Path_pairList & path_pairList)
 									}
 								}
 
-								// FIXME: a bug here
-								/*
-								if (!found)
-								{
-									mutex::scoped_lock lock(m_mutex);
-									insertIntoHashTree(fiProxy, indices);
-								}
-								*/
+								if (found)
+									break;
 							}
+						}
+
+						if (!found)
+						{
+							mutex::scoped_lock lock(m_mutex);
+							insertIntoHashTree(fiProxy, indices);
 						}
 					}
 					else
@@ -191,6 +193,7 @@ void FileGatherer::createFileList(const ID_Path_pairList & path_pairList)
 						insertIntoHashTree(fiProxy, indices);
 					}
 				}
+//cout << endl;
 			}
 		}
 		else
@@ -228,26 +231,26 @@ void FileGatherer::createFileList(const ID_Path_pairList & path_pairList)
 
 					if (ht_ptr->size() > 0)
 					{
-						for (HashTree::iterator i = ht_ptr->begin(); i != ht_ptr->end(); i++)
+						for (HashTree::iterator t_it = ht_ptr->begin(); t_it != ht_ptr->end(); t_it++)
 						{
-							if (*i == 0)
-								continue;
-
-							bool found = false;
-
-							for (vector<FileInfoProxy*>::iterator j = (*i)->begin(); j != (*i)->end(); j++)
+							if (*t_it != 0)
 							{
-								if ((*j)->m_hash == fiProxy.m_hash)
+								bool found = false;
+
+								for (vector<FileInfoProxy*>::iterator l_it = (*t_it)->begin(); l_it != (*t_it)->end(); l_it++)
 								{
-									found = true;
-									break;
+									if ((*l_it)->m_hash == fiProxy.m_hash)
+									{
+										found = true;
+										break;
+									}
 								}
-							}
 
-							if (!found)
-							{
-								mutex::scoped_lock lock(m_mutex);
-								insertIntoHashTree(fiProxy, indices);
+								if (!found)
+								{
+									mutex::scoped_lock lock(m_mutex);
+									insertIntoHashTree(fiProxy, indices);
+								}
 							}
 						}
 					}
@@ -282,13 +285,13 @@ void FileGatherer::listFiles(const ID_Path_pairList & path_pairList)
 		}
 	}
 
-	//thread thrd_fs(&FileGatherer::createFileList, this, path_pairList);
-	//thread thrd_db(&FileGatherer::readFromDb, this);
+	thread thrd_fs(&FileGatherer::createFileList, this, path_pairList);
+	thread thrd_db(&FileGatherer::readFromDb, this);
 
-	//thrd_fs.join();
-	//thrd_db.join();
+	thrd_fs.join();
+	thrd_db.join();
 	//
-	createFileList(path_pairList);
+	//createFileList(path_pairList);
 }
 
 // FIXME: performance issues
@@ -347,7 +350,12 @@ void FileGatherer::insertIntoHashTree(const FileGatherer::FileInfoProxy & fi, sh
 	vector<FileInfoProxy*> * leafPtr = new vector<FileInfoProxy*>;
 	FileInfoProxy * proxy = new FileInfoProxy(fi);
 
-	//cout << "~ allocation of " << typeid(leafPtr).name() << " at " << leafPtr << endl;
+/*
+	cout << "~ dereferencing m_hashTree";
+	for (int i = 0; i < 3; i++)
+		cout << '[' << indices[i] << ']';
+	cout << ' ' << m_hashTree[indices[0]][indices[1]][indices[2]] << endl;
+*/
 
 	leafPtr->push_back(proxy);
 	m_hashTree[indices[0]][indices[1]][indices[2]]->push_back(leafPtr);
@@ -412,27 +420,31 @@ void FileGatherer::readFromDb()
 
 		if (size > 0)
 		{
-			for (HashTree::iterator i = ht_ptr->begin(); i != ht_ptr->end(); i++)
+			bool found = false;
+
+			for (HashTree::iterator t_it = ht_ptr->begin(); t_it != ht_ptr->end(); t_it++)
 			{
-				if (*i == 0)
-					continue;
-
-				bool found = false;
-
-				for (vector<FileInfoProxy*>::iterator j = (*i)->begin(); j != (*i)->end(); j++)
+				if ((*t_it))
 				{
-					if ((*j)->m_hash == fiProxy.m_hash)
+					for (HashLeaf::iterator l_it = (*t_it)->begin(); l_it != (*t_it)->end(); l_it++)
 					{
-						found = true;
-						break;
+						if ((*l_it)->m_hash == fiProxy.m_hash)
+						{
+							found = true;
+							(*t_it)->push_back(new FileInfoProxy(fiProxy));
+							break;
+						}
 					}
 				}
 
-				if (!found)
-				{
-					mutex::scoped_lock lock(m_mutex);
-					insertIntoHashTree(fiProxy, indices);
-				}
+				if (found)
+					break;
+			}
+
+			if (!found)
+			{
+				mutex::scoped_lock lock(m_mutex);
+				insertIntoHashTree(fiProxy, indices);
 			}
 		}
 		else
