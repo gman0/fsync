@@ -20,7 +20,8 @@
 #ifndef DEFS_H
 #define DEFS_H
 
-#define HASH_LENGTH 16
+#define HASH_LENGTH 10
+
 #define CHUNK_SIZE 2048
 
 #define BLOCK_SIZE 32448
