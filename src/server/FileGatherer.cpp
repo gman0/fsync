@@ -49,14 +49,14 @@ FileGatherer::FileGatherer(Config * config) :
 		}
 	}
 
-	cout << "creating file list..." << flush;
+	cout << "Creating file list..." << flush;
 	ID_Path_pairList id_path_pairList = config->getPathList();
 	m_pathTransform = new PathTransform(id_path_pairList);
 	listFiles(id_path_pairList);
 	cout << "done." << endl;
 
 
-	cout << "gathering changes..." << flush;
+	cout << "Gathering changes..." << flush;
 	FIProxyPtrVector changed = getChanges();
 	cout << "done." << endl;
 }
@@ -459,36 +459,7 @@ void FileGatherer::readFromDb()
 				m_hashTree[indices[0]][indices[1]][indices[2]] = new HashTree;
 		}
 
-		HashTreePtr ht_ptr = m_hashTree[indices[0]][indices[1]][indices[2]];
-
-		bool found = false;
-
-		for (HashTree::iterator t_it = ht_ptr->begin(); t_it != ht_ptr->end(); t_it++)
-		{
-			for (HashLeaf::iterator l_it = (*t_it)->begin(); l_it != (*t_it)->end(); l_it++)
-			{
-				FileInfo l_fi;
-
-				{
-					mutex::scoped_lock lock(m_mutex);
-					l_fi = getFileInfo(*l_it);
-				}
-
-				if (fi.m_hash == l_fi.m_hash)
-				{
-					mutex::scoped_lock lock(m_mutex);
-
-					(*t_it)->push_back(fiProxyPtr);
-					found = true;
-					break;
-				}
-			}
-
-			if (found)
-				break;
-		}
-
-		if (!found)
+		if (!checkPairExistence(indices, &fi.m_hash, fiProxyPtr))
 		{
 			mutex::scoped_lock lock(m_mutex);
 			insertIntoHashTree(fiProxyPtr, indices);
