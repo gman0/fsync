@@ -27,7 +27,6 @@
 #include <map>
 #include <utility>
 #include <boost/thread/mutex.hpp>
-//#include "AlignedIteratorPtrContainer.cpp"
 #include "Config.h"
 #include "defs.h"
 
@@ -36,43 +35,30 @@ class PathTransform;
 class FileGatherer
 {
 	public:
-		// obsolete
-		enum FI_ACTION_ID
-		{
-			A_NONE,
-			A_ADD,
-			A_CHANGE,
-			A_DELETE
-		};
-
-
-		enum FILE_INFO_FLAG
-		{
-			F_SRC_DB =			0x0000,
-			F_SRC_FS =			0x0001,
-
-			F_ACTION_ADD =		0x0002,
-			F_ACTION_CHANGE =	0x0004,
-			F_ACTION_DELETE =	0x0008
-		};
 
 
 		struct FileInfo
 		{
 			PathId m_pathId;
 			char m_path[PATH_LENGTH];
+			uint32_t m_hash;
 			time_t m_lastWrite;
 
-			FI_ACTION_ID m_action; // obsolete
-			short int m_flags;
+			FileInfo() : m_hash(0) {}
 
-			FileInfo() : m_action(A_NONE), m_flags(0) {}
+			FileInfo(const FileInfo & fi)
+			{
+				m_pathId = fi.m_pathId;
+				strcpy(m_path, fi.m_path);
+				m_hash = fi.m_hash;
+				m_lastWrite = fi.m_lastWrite;
+			}
 
 			bool operator==(const FileInfo & fi)
 			{
 				if (
 					m_pathId == fi.m_pathId &&
-					strcmp(m_path, fi.m_path) == 0
+					m_hash == fi.m_hash
 					)
 						return true;
 
@@ -88,8 +74,8 @@ class FileGatherer
 			{
 				m_pathId = fi.m_pathId;
 				strcpy(m_path, fi.m_path);
+				m_hash = fi.m_hash;
 				m_lastWrite = fi.m_lastWrite;
-				m_action = fi.m_action;
 
 				return *this;
 			}
@@ -100,14 +86,44 @@ class FileGatherer
 		typedef std::vector<FileInfo> FIvector;
 
 
-	private:
+
+		enum FILE_INFO_FLAG
+		{
+			F_NONE =			0x0000,
+
+
+			/*
+			 * source is defined as F_SRC_DB (Flag: Source - database) for readFromDb method and F_SRC_FS (Flag: Source - file system)
+			 * for createFileList method.
+			 */
+			F_SRC_DB =			0x0001,
+			F_SRC_FS =			0x0002,
+
+			F_ACTION_ADD =		0x0004,
+			F_ACTION_CHANGE =	0x0008,
+			F_ACTION_DELETE =	0x0010
+		};
+
 
 		struct FileInfoProxy
 		{
-			uint32_t m_hash;
-			FIvector::iterator m_object;
-			FILE_INFO_FLAG m_source;
+			typedef size_t src_fs_t;
+			typedef std::streampos src_db_t;
+
+			void * m_object;
+			short int m_flags;
+
+			FileInfoProxy() : m_object(0), m_flags(F_NONE)
+			{}
+
+			FileInfoProxy(void * object, FILE_INFO_FLAG source) : m_object(object), m_flags(source)
+			{}
 		};
+
+		typedef std::vector<FileInfoProxy*> FIProxyPtrVector;
+
+
+	private:
 
 		typedef std::vector<std::vector<FileInfoProxy*>*> HashTree;
 		typedef std::vector<std::vector<FileInfoProxy*>*>* HashTreePtr;
@@ -118,7 +134,9 @@ class FileGatherer
 		boost::filesystem::path m_filesDbPath;
 
 		FIvector m_fileInfoVector;
-		FIvector m_changedFileInfoVector;
+
+		// if this was an object, it would crash...dunno why
+		std::ifstream * m_dbFileIStream;
 
 		// 3-dimensional array of pointers to std::vector<std::vector<FileInfoProxy*>*>*
 		HashTreePtr *** m_hashTree;
@@ -130,26 +148,42 @@ class FileGatherer
 		~FileGatherer();
 
 		void updateDb();
-		const FIvector & getChangedFiles();
+		FIProxyPtrVector getChanges();
+
+		FileInfo getFileInfo(const FileInfoProxy * p);
+
+		FILE_INFO_FLAG getSource(short int flags);
+
+		bool isOn(short int flags, FILE_INFO_FLAG f);
+		inline bool isOff(short int flags, FILE_INFO_FLAG f) { return !isOn(flags, f); }
+
+		inline bool flaggedAdd(short int flags) { return isOn(flags, F_ACTION_ADD); }
+		inline bool flaggedChange(short int flags) { return isOn(flags, F_ACTION_CHANGE); }
+		inline bool flaggedDelete(short int flags) { return isOn(flags, F_ACTION_DELETE); }
 
 	private:
 		inline size_t getOffset(size_t n) { return n * sizeof(FileInfo); }
 		inline int offsetToIndex(size_t offset) { return offset / sizeof(FileInfo); }
+
 		void createFileList(const ID_Path_pairList & path_pairList);
-		FileInfo assembleFileInfo(const PathId id, const boost::filesystem::path & path);
+
 
 		/*
 		 * indices should point to the beginning of an array of N items where N is the number of dimensions of m_hashTree array.
 		 * Notice that this method will work by default only for 3D array, therefore when changing the number of dimensions this
 		 * and other methods using this one have to be manually customized.
-		 * source is defined as F_SRC_DB (Flag: Source - database) for readFromDb method and F_SRC_FS (Flag: Source - file system)
-		 * for createFileList method.
 		 */
-		FileInfoProxy assembleFileInfoProxy(const FileInfo * fi, FIvector::iterator it, FILE_INFO_FLAG source,
-											short int * indices);
-		inline void insertIntoHashTree(const FileInfoProxy & fiProxy, short int * indices);
+		void generateIndices(const uint32_t * hash, short int * indices);
+
+		FileInfo assembleFileInfo(const PathId id, const boost::filesystem::path & path);
+
+		void insertIntoHashTree(FileInfoProxy * fiProxy, short int * indices);
+		bool checkPairExistence(const short int * indices, const uint32_t * hash, FileInfoProxy * proxy);
 		void listFiles(const ID_Path_pairList & path_pairList);
+
+		// also initializes m_dbFileIStream
 		void readFromDb();
+
 		void writeToDb(FIvector & fileInfoVec) const;
 
 		void thread_add(FIvector & dbContents);
