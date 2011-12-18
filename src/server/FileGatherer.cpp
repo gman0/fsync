@@ -50,15 +50,25 @@ FileGatherer::FileGatherer(Config * config) :
 	}
 
 	cout << "Creating file list..." << flush;
+
+	m_dbFileIStream = new ifstream;
+
 	ID_Path_pairList id_path_pairList = config->getPathList();
 	m_pathTransform = new PathTransform(id_path_pairList);
 	listFiles(id_path_pairList);
+
 	cout << "done." << endl;
 
 
 	cout << "Gathering changes..." << flush;
 	FIProxyPtrVector changed = getChanges();
 	cout << "done." << endl;
+	
+	for (FIProxyPtrVector::iterator it = changed.begin(); it != changed.end(); it++)
+	{
+		FileInfo fi = getFileInfo(*it);
+		cout << "path: " << fi.m_path << " flags: " << (*it)->m_flags << endl;
+	}
 }
 
 FileGatherer::~FileGatherer()
@@ -101,13 +111,10 @@ FileGatherer::~FileGatherer()
 
 	delete m_pathTransform;
 
-	if (m_dbFileIStream)
-	{
-		if (m_dbFileIStream->is_open())
-			m_dbFileIStream->close();
+	if (m_dbFileIStream->is_open())
+		m_dbFileIStream->close();
 
-		delete m_dbFileIStream;
-	}
+	delete m_dbFileIStream;
 }
 
 void FileGatherer::createFileList(const ID_Path_pairList & path_pairList)
@@ -146,7 +153,7 @@ void FileGatherer::createFileList(const ID_Path_pairList & path_pairList)
 					short int indices[3];
 					FileInfo fi = assembleFileInfo(i->first, p);
 
-					generateIndices(&fi.m_hash, indices);
+					generateIndices(fi.m_hash, indices);
 
 					FileInfoProxy::src_fs_t * indexPtr;
 					FileInfoProxy * fiProxyPtr;
@@ -161,57 +168,22 @@ void FileGatherer::createFileList(const ID_Path_pairList & path_pairList)
 
 						// compensation for partial hash tree
 						if (m_hashTree[indices[0]][indices[1]][indices[2]] == 0)
+						{
 							m_hashTree[indices[0]][indices[1]][indices[2]] = new HashTree;
+							HashLeaf * leafPtr = new HashLeaf;
+							leafPtr->push_back(fiProxyPtr);
+							m_hashTree[indices[0]][indices[1]][indices[2]]->push_back(leafPtr);
+
+							continue;
+						}
 					}
 
-					if (!checkPairExistence(indices, &fi.m_hash, fiProxyPtr))
-					{
-						mutex::scoped_lock lock(m_mutex);
+					if (!checkPairExistence(indices, fi.m_hash, fiProxyPtr))
 						insertIntoHashTree(fiProxyPtr, indices);
-					}
 				}
 			}
 		}
-		else
-		{
-			for (directory_iterator dirIt(p); dirIt != directory_iterator(); dirIt++)
-			{
-				path p = dirIt->path();
-
-				if (m_pathTransform->isExcluded(p, i->first))
-					continue;
-
-				if (is_regular_file(p))
-				{
-					short int indices[3];
-					FileInfo fi = assembleFileInfo(i->first, p);
-
-					generateIndices(&fi.m_hash, indices);
-
-					FileInfoProxy::src_fs_t * indexPtr;
-					FileInfoProxy * fiProxyPtr;
-
-					m_fileInfoVector.push_back(fi);
-
-					{
-						mutex::scoped_lock lock(m_mutex);
-
-						indexPtr = new FileInfoProxy::src_fs_t(index++);
-						fiProxyPtr = new FileInfoProxy((void*)indexPtr, F_SRC_FS);
-
-						// compensation for partial hash tree
-						if (m_hashTree[indices[0]][indices[1]][indices[2]] == 0)
-							m_hashTree[indices[0]][indices[1]][indices[2]] = new HashTree;
-					}
-
-					if (!checkPairExistence(indices, &fi.m_hash, fiProxyPtr))
-					{
-						mutex::scoped_lock lock(m_mutex);
-						insertIntoHashTree(fiProxyPtr, indices);
-					}
-				}
-			}
-		}
+		else {}
 	}
 }
 
@@ -308,45 +280,42 @@ FileGatherer::FileInfo FileGatherer::assembleFileInfo(const PathId id, const pat
 	return fi;
 }
 
-void FileGatherer::generateIndices(const uint32_t * hash, short int * indices)
+void FileGatherer::generateIndices(const uint32_t hash, short int * indices)
 {
 	char digits[HASH_LENGTH + 1];
+	memset(digits, 0, (HASH_LENGTH + 1) * sizeof(char));
+
 	char tmp[2];
 
 	tmp[1] = '\0';
 
-	sprintf(digits, "%d", *hash);
+	sprintf(digits, "%u", hash);
 
-	tmp[0] = digits[0];
-	indices[0] = atoi(tmp);
-
-	tmp[0] = digits[1];
-	indices[1] = atoi(tmp);
-
-	tmp[0] = digits[2];
-	indices[2] = atoi(tmp);
+	for (int i = 0; i < 3; i++)
+	{
+		tmp[0] = digits[i];
+		indices[i] = atoi(tmp);
+	}
 }
 
-bool FileGatherer::checkPairExistence(const short int * indices, const uint32_t * hash, FileGatherer::FileInfoProxy * proxy)
+bool FileGatherer::checkPairExistence(const short int * indices, const uint32_t hash, FileGatherer::FileInfoProxy * proxy)
 {
 	HashTreePtr ht_ptr = m_hashTree[indices[0]][indices[1]][indices[2]];
 
-	for (HashTree::iterator t_it = ht_ptr->begin(); t_it != ht_ptr->end(); t_it++)
+	for (size_t i = 0; i < getSize<HashTree>(ht_ptr); i++)
 	{
-		for (HashLeaf::iterator l_it = (*t_it)->begin(); l_it != (*t_it)->end(); l_it++)
+		HashLeaf * t_it = ht_ptr->at(i);
+
+		for (size_t j = 0; j < getSize<HashLeaf>(t_it); j++)
 		{
-			FileInfo l_fi;
+			FileInfoProxy * l_proxy = t_it->at(j);
+			FileInfo l_fi = getFileInfo(l_proxy);
 
-			{
-				mutex::scoped_lock lock(m_mutex);
-				l_fi = getFileInfo(*l_it);
-			}
-
-			if (*hash == l_fi.m_hash)
+			if (hash == l_fi.m_hash)
 			{
 				{
 					mutex::scoped_lock lock(m_mutex);
-					(*t_it)->push_back(proxy);
+					t_it->push_back(proxy);
 				}
 
 				return true;
@@ -357,32 +326,31 @@ bool FileGatherer::checkPairExistence(const short int * indices, const uint32_t 
 	return false;
 }
 
-FileGatherer::FileInfo FileGatherer::getFileInfo(const FileGatherer::FileInfoProxy * p)
+FileGatherer::FileInfo FileGatherer::getFileInfo(const FileGatherer::FileInfoProxy * proxy)
 {
-	FILE_INFO_FLAG source = getSource(p->m_flags);
+	FILE_INFO_FLAG source = getSource(proxy->m_flags);
 
 	if (source == F_SRC_FS)
 	{
-		FileInfoProxy::src_fs_t index = *(FileInfoProxy::src_fs_t*)p->m_object;
-		FileInfo fi = m_fileInfoVector.at(index);
-
-		return fi;
+		FileInfoProxy::src_fs_t index = *(FileInfoProxy::src_fs_t*)proxy->m_object;
+		return m_fileInfoVector.at(index);
 	}
 	else if (source == F_SRC_DB)
 	{
-		FileInfoProxy::src_db_t offset = *(FileInfoProxy::src_db_t*)p->m_object;
-		streampos tmp = m_dbFileIStream->tellg();
+		FileInfoProxy::src_db_t offset = *(FileInfoProxy::src_db_t*)proxy->m_object;
+		char buffer[sizeof(FileInfo)];
 
-		m_dbFileIStream->seekg(offset);
+		{
+			mutex::scoped_lock lock(m_mutex);
 
-		char buf[sizeof(FileInfo)];
-		m_dbFileIStream->readsome(buf, sizeof(FileInfo));
+			size_t tmp = m_dbFileIStream->tellg();
+			
+			m_dbFileIStream->seekg(offset);
+			m_dbFileIStream->readsome(buffer, sizeof(FileInfo));
+			m_dbFileIStream->seekg(tmp);
+		}
 
-		m_dbFileIStream->seekg(tmp);
-
-		FileInfo fi = *(FileInfo*)buf;
-
-		return fi;
+		return *(FileInfo*)buffer;
 	}
 
 	return FileInfo();
@@ -405,6 +373,8 @@ FileGatherer::FILE_INFO_FLAG FileGatherer::getSource(short int flags)
 
 void FileGatherer::insertIntoHashTree(FileGatherer::FileInfoProxy * proxy, short int * indices)
 {
+	mutex::scoped_lock lock(m_mutex);
+
 	HashLeaf * leafPtr = new HashLeaf;
 	leafPtr->push_back(proxy);
 
@@ -421,7 +391,7 @@ void FileGatherer::readFromDb()
 		throw FSException(errMsg, __FILE__, __LINE__);
 	}
 
-	m_dbFileIStream = new ifstream(m_filesDbPath.c_str());
+	m_dbFileIStream->open(m_filesDbPath.c_str());
 
 	if (!m_dbFileIStream->is_open())
 	{
@@ -438,13 +408,18 @@ void FileGatherer::readFromDb()
 	for (int i = 0; i < count; i++)
 	{
 		offset = getOffset(i);
-		m_dbFileIStream->seekg(offset);
-		m_dbFileIStream->readsome(buffer, sizeof(FileInfo));
+
+		{
+			mutex::scoped_lock lock(m_mutex);
+
+			m_dbFileIStream->seekg(offset);
+			m_dbFileIStream->readsome(buffer, sizeof(FileInfo));
+		}
 
 		short int indices[3];
 		FileInfo fi = *(FileInfo*)buffer;
 
-		generateIndices(&fi.m_hash, indices);
+		generateIndices(fi.m_hash, indices);
 
 		FileInfoProxy::src_db_t * streamPosPtr;
 		FileInfoProxy * fiProxyPtr;
@@ -456,14 +431,18 @@ void FileGatherer::readFromDb()
 			fiProxyPtr = new FileInfoProxy((void*)streamPosPtr, F_SRC_DB);
 
 			if (!m_hashTree[indices[0]][indices[1]][indices[2]])
+			{
 				m_hashTree[indices[0]][indices[1]][indices[2]] = new HashTree;
+				HashLeaf * leafPtr = new HashLeaf;
+				leafPtr->push_back(fiProxyPtr);
+				m_hashTree[indices[0]][indices[1]][indices[2]]->push_back(leafPtr);
+				
+				continue;
+			}
 		}
 
-		if (!checkPairExistence(indices, &fi.m_hash, fiProxyPtr))
-		{
-			mutex::scoped_lock lock(m_mutex);
+		if (!checkPairExistence(indices, fi.m_hash, fiProxyPtr))
 			insertIntoHashTree(fiProxyPtr, indices);
-		}
 	}
 }
 
