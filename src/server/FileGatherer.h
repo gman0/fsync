@@ -142,6 +142,7 @@ class FileGatherer
 		HashTreePtr *** m_hashTree;
 
 		boost::mutex m_mutex;
+		boost::mutex m_ioMutex;
 
 	public:
 		FileGatherer(Config * config);
@@ -166,7 +167,7 @@ class FileGatherer
 		inline int offsetToIndex(size_t offset) { return offset / sizeof(FileInfo); }
 		
 		template <typename Container>
-		inline size_t getSize(Container * c) { boost::mutex::scoped_lock lock(m_mutex); return c->size(); }
+		inline size_t getSize(Container * c) { /*boost::mutex::scoped_lock lock(m_mutex);*/ return c->size(); }
 
 		void createFileList(const ID_Path_pairList & path_pairList);
 
@@ -176,12 +177,12 @@ class FileGatherer
 		 * Notice that this method will work by default only for 3D array, therefore when changing the number of dimensions this
 		 * and other methods using this one have to be manually customized.
 		 */
-		void generateIndices(const uint32_t hash, short int * indices);
+		void generateIndices(const uint32_t & hash, short int * indices);
 
 		FileInfo assembleFileInfo(const PathId id, const boost::filesystem::path & path);
 
 		void insertIntoHashTree(FileInfoProxy * fiProxy, short int * indices);
-		bool checkPairExistence(const short int * indices, const uint32_t hash, FileInfoProxy * proxy);
+		bool checkPairExistence(const short int * indices, const uint32_t & hash, FileInfoProxy * proxy);
 		void listFiles(const ID_Path_pairList & path_pairList);
 
 		void readFromDb();

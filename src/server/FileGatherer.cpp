@@ -67,7 +67,10 @@ FileGatherer::FileGatherer(Config * config) :
 	for (FIProxyPtrVector::iterator it = changed.begin(); it != changed.end(); it++)
 	{
 		FileInfo fi = getFileInfo(*it);
-		cout << "path: " << fi.m_path << " flags: " << (*it)->m_flags << endl;
+		short int flags = (*it)->m_flags;
+		cout << "path: " << fi.m_path << " flags: " << ((getSource(flags) == F_SRC_FS) ? "F_SRC_FS" : "F_SRC_DB")
+			 << "; flaggedAdd " << flaggedAdd(flags) << "; flaggedDelete " << flaggedDelete(flags)
+			 << "; flaggedChange " << flaggedChange(flags) << endl;
 	}
 }
 
@@ -158,13 +161,24 @@ void FileGatherer::createFileList(const ID_Path_pairList & path_pairList)
 					FileInfoProxy::src_fs_t * indexPtr;
 					FileInfoProxy * fiProxyPtr;
 
-					m_fileInfoVector.push_back(fi);
 
 					{
 						mutex::scoped_lock lock(m_mutex);
+						m_fileInfoVector.push_back(fi);
+					}
 
+					{
+						mutex::scoped_lock lock(m_mutex);
 						indexPtr = new FileInfoProxy::src_fs_t(index++);
+					}
+
+					{
+						mutex::scoped_lock lock(m_mutex);
 						fiProxyPtr = new FileInfoProxy((void*)indexPtr, F_SRC_FS);
+					}
+
+					{
+						mutex::scoped_lock lock(m_mutex);
 
 						// compensation for partial hash tree
 						if (m_hashTree[indices[0]][indices[1]][indices[2]] == 0)
@@ -183,7 +197,59 @@ void FileGatherer::createFileList(const ID_Path_pairList & path_pairList)
 				}
 			}
 		}
-		else {}
+		else
+		{
+			for (directory_iterator dirIt(p); dirIt != directory_iterator(); dirIt++)
+			{
+				path p = dirIt->path();
+
+				if (m_pathTransform->isExcluded(p, i->first))
+					continue;
+
+				if (is_regular_file(p))
+				{
+					short int indices[3];
+					FileInfo fi = assembleFileInfo(i->first, p);
+
+					generateIndices(fi.m_hash, indices);
+
+					FileInfoProxy::src_fs_t * indexPtr;
+					FileInfoProxy * fiProxyPtr;
+
+					{
+						mutex::scoped_lock lock(m_mutex);
+						m_fileInfoVector.push_back(fi);
+					}
+
+					{
+						mutex::scoped_lock lock(m_mutex);
+						indexPtr = new FileInfoProxy::src_fs_t(index++);
+					}
+
+					{
+						mutex::scoped_lock lock(m_mutex);
+						fiProxyPtr = new FileInfoProxy((void*)indexPtr, F_SRC_FS);
+					}
+
+					{
+						mutex::scoped_lock lock(m_mutex);
+
+						if (m_hashTree[indices[0]][indices[1]][indices[2]] == 0)
+						{
+							m_hashTree[indices[0]][indices[1]][indices[2]] = new HashTree;
+							HashLeaf * leafPtr = new HashLeaf;
+							leafPtr->push_back(fiProxyPtr);
+							m_hashTree[indices[0]][indices[1]][indices[2]]->push_back(leafPtr);
+
+							continue;
+						}
+					}
+
+					if (!checkPairExistence(indices, fi.m_hash, fiProxyPtr))
+						insertIntoHashTree(fiProxyPtr, indices);
+				}
+			}
+		}
 	}
 }
 
@@ -208,11 +274,18 @@ void FileGatherer::listFiles(const ID_Path_pairList & path_pairList)
 	}
 
 
-	thread thrd_fs(&FileGatherer::createFileList, this, path_pairList);
-	thread thrd_db(&FileGatherer::readFromDb, this);
+	/*
+	 * The performance here with multi-threading is frankly really bad. It's actually so bad,
+	 * that I decided to run it in single-thread till I figure out how to make it work.
+	 */
+	// thread thrd_fs(&FileGatherer::createFileList, this, path_pairList);
+	// thread thrd_db(&FileGatherer::readFromDb, this);
 
-	thrd_fs.join();
-	thrd_db.join();
+	// thrd_fs.join();
+	// thrd_db.join();
+
+	createFileList(path_pairList);
+	readFromDb();
 }
 
 FileGatherer::FIProxyPtrVector FileGatherer::getChanges()
@@ -280,11 +353,9 @@ FileGatherer::FileInfo FileGatherer::assembleFileInfo(const PathId id, const pat
 	return fi;
 }
 
-void FileGatherer::generateIndices(const uint32_t hash, short int * indices)
+void FileGatherer::generateIndices(const uint32_t & hash, short int * indices)
 {
 	char digits[HASH_LENGTH + 1];
-	memset(digits, 0, (HASH_LENGTH + 1) * sizeof(char));
-
 	char tmp[2];
 
 	tmp[1] = '\0';
@@ -298,7 +369,7 @@ void FileGatherer::generateIndices(const uint32_t hash, short int * indices)
 	}
 }
 
-bool FileGatherer::checkPairExistence(const short int * indices, const uint32_t hash, FileGatherer::FileInfoProxy * proxy)
+bool FileGatherer::checkPairExistence(const short int * indices, const uint32_t & hash, FileGatherer::FileInfoProxy * proxy)
 {
 	HashTreePtr ht_ptr = m_hashTree[indices[0]][indices[1]][indices[2]];
 
@@ -306,9 +377,29 @@ bool FileGatherer::checkPairExistence(const short int * indices, const uint32_t 
 	{
 		HashLeaf * t_it = ht_ptr->at(i);
 
-		for (size_t j = 0; j < getSize<HashLeaf>(t_it); j++)
+		size_t s = getSize<HashLeaf>(t_it);
+		for (size_t j = 0; j < s; j++)
 		{
 			FileInfoProxy * l_proxy = t_it->at(j);
+
+			/*
+			 * It would be great if I could do something like this:
+			 *
+			 * if (getSource(proxy->m_flags) == getSource(l_proxy->m_flags))
+			 * 		continue;
+			 *
+			 * The performance speed-up is tremendous: about 5x faster on my machine.
+			 * It would skip lots of uneeded cycle loops because we don't need to check for hash equality
+			 * if the source is the same.
+			 *
+			 * But it doesn't work always - when interating through a small number of files it works just perfect
+			 * but with a lot of files (about 100k) it will give us false positives when calling getChanges()
+			 * many false results with flags F_SRC_FS and F_ACTION_ADD set to true.
+			 *
+			 * So I'll implement this later (or maybe never if I actually find out that this piece of code was actually
+			 * a bad idea).
+			 */
+
 			FileInfo l_fi = getFileInfo(l_proxy);
 
 			if (hash == l_fi.m_hash)
@@ -331,26 +422,21 @@ FileGatherer::FileInfo FileGatherer::getFileInfo(const FileGatherer::FileInfoPro
 	FILE_INFO_FLAG source = getSource(proxy->m_flags);
 
 	if (source == F_SRC_FS)
-	{
-		FileInfoProxy::src_fs_t index = *(FileInfoProxy::src_fs_t*)proxy->m_object;
-		return m_fileInfoVector.at(index);
-	}
+		return m_fileInfoVector.at(*(FileInfoProxy::src_fs_t*)proxy->m_object);
 	else if (source == F_SRC_DB)
 	{
-		FileInfoProxy::src_db_t offset = *(FileInfoProxy::src_db_t*)proxy->m_object;
 		char buffer[sizeof(FileInfo)];
 
 		{
-			mutex::scoped_lock lock(m_mutex);
+			mutex::scoped_lock ioLock(m_ioMutex);
 
-			size_t tmp = m_dbFileIStream->tellg();
-			
-			m_dbFileIStream->seekg(offset);
+			m_dbFileIStream->seekg(*(FileInfoProxy::src_db_t*)proxy->m_object);
 			m_dbFileIStream->readsome(buffer, sizeof(FileInfo));
-			m_dbFileIStream->seekg(tmp);
 		}
 
-		return *(FileInfo*)buffer;
+		FileInfo * fiPtr = (FileInfo*)buffer;
+
+		return *fiPtr;
 	}
 
 	return FileInfo();
@@ -410,14 +496,16 @@ void FileGatherer::readFromDb()
 		offset = getOffset(i);
 
 		{
-			mutex::scoped_lock lock(m_mutex);
+			mutex::scoped_lock ioLock(m_ioMutex);
 
 			m_dbFileIStream->seekg(offset);
 			m_dbFileIStream->readsome(buffer, sizeof(FileInfo));
 		}
 
 		short int indices[3];
-		FileInfo fi = *(FileInfo*)buffer;
+
+		FileInfo * fiPtr = (FileInfo*)buffer;
+		FileInfo fi = *fiPtr;
 
 		generateIndices(fi.m_hash, indices);
 
@@ -429,6 +517,10 @@ void FileGatherer::readFromDb()
 
 			streamPosPtr = new FileInfoProxy::src_db_t(offset);
 			fiProxyPtr = new FileInfoProxy((void*)streamPosPtr, F_SRC_DB);
+		}
+
+		{
+			mutex::scoped_lock lock(m_mutex);
 
 			if (!m_hashTree[indices[0]][indices[1]][indices[2]])
 			{
