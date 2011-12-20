@@ -19,7 +19,6 @@
 
 #include <string>
 #include <fstream>
-#include <boost/thread.hpp>
 #include <cstdio>
 #include <cstdlib>
 #include "FileGatherer.h"
@@ -29,7 +28,6 @@
 #include "LogManager.h"
 
 using namespace std;
-using namespace boost;
 using namespace boost::filesystem;
 
 FileGatherer::FileGatherer(Config * config) :
@@ -63,7 +61,7 @@ FileGatherer::FileGatherer(Config * config) :
 	cout << "Gathering changes..." << flush;
 	FIProxyPtrVector changed = getChanges();
 	cout << "done." << endl;
-	
+
 	for (FIProxyPtrVector::iterator it = changed.begin(); it != changed.end(); it++)
 	{
 		FileInfo fi = getFileInfo(*it);
@@ -161,39 +159,16 @@ void FileGatherer::createFileList(const ID_Path_pairList & path_pairList)
 					FileInfoProxy::src_fs_t * indexPtr;
 					FileInfoProxy * fiProxyPtr;
 
+					m_fileInfoVector.push_back(fi);
 
-					{
-						mutex::scoped_lock lock(m_mutex);
-						m_fileInfoVector.push_back(fi);
-					}
+					indexPtr = new FileInfoProxy::src_fs_t(index++);
+					fiProxyPtr = new FileInfoProxy((void*)indexPtr, F_SRC_FS);
 
-					{
-						mutex::scoped_lock lock(m_mutex);
-						indexPtr = new FileInfoProxy::src_fs_t(index++);
-					}
+					// compensation for partial hash tree
+					if (!m_hashTree[indices[0]][indices[1]][indices[2]])
+						m_hashTree[indices[0]][indices[1]][indices[2]] = new HashTree;
 
-					{
-						mutex::scoped_lock lock(m_mutex);
-						fiProxyPtr = new FileInfoProxy((void*)indexPtr, F_SRC_FS);
-					}
-
-					{
-						mutex::scoped_lock lock(m_mutex);
-
-						// compensation for partial hash tree
-						if (m_hashTree[indices[0]][indices[1]][indices[2]] == 0)
-						{
-							m_hashTree[indices[0]][indices[1]][indices[2]] = new HashTree;
-							HashLeaf * leafPtr = new HashLeaf;
-							leafPtr->push_back(fiProxyPtr);
-							m_hashTree[indices[0]][indices[1]][indices[2]]->push_back(leafPtr);
-
-							continue;
-						}
-					}
-
-					if (!checkPairExistence(indices, fi.m_hash, fiProxyPtr))
-						insertIntoHashTree(fiProxyPtr, indices);
+					insertIntoHashTree(fiProxyPtr, indices);
 				}
 			}
 		}
@@ -216,37 +191,15 @@ void FileGatherer::createFileList(const ID_Path_pairList & path_pairList)
 					FileInfoProxy::src_fs_t * indexPtr;
 					FileInfoProxy * fiProxyPtr;
 
-					{
-						mutex::scoped_lock lock(m_mutex);
-						m_fileInfoVector.push_back(fi);
-					}
+					m_fileInfoVector.push_back(fi);
 
-					{
-						mutex::scoped_lock lock(m_mutex);
-						indexPtr = new FileInfoProxy::src_fs_t(index++);
-					}
+					indexPtr = new FileInfoProxy::src_fs_t(index++);
+					fiProxyPtr = new FileInfoProxy((void*)indexPtr, F_SRC_FS);
 
-					{
-						mutex::scoped_lock lock(m_mutex);
-						fiProxyPtr = new FileInfoProxy((void*)indexPtr, F_SRC_FS);
-					}
+					if (!m_hashTree[indices[0]][indices[1]][indices[2]])
+						m_hashTree[indices[0]][indices[1]][indices[2]] = new HashTree;
 
-					{
-						mutex::scoped_lock lock(m_mutex);
-
-						if (m_hashTree[indices[0]][indices[1]][indices[2]] == 0)
-						{
-							m_hashTree[indices[0]][indices[1]][indices[2]] = new HashTree;
-							HashLeaf * leafPtr = new HashLeaf;
-							leafPtr->push_back(fiProxyPtr);
-							m_hashTree[indices[0]][indices[1]][indices[2]]->push_back(leafPtr);
-
-							continue;
-						}
-					}
-
-					if (!checkPairExistence(indices, fi.m_hash, fiProxyPtr))
-						insertIntoHashTree(fiProxyPtr, indices);
+					insertIntoHashTree(fiProxyPtr, indices);
 				}
 			}
 		}
@@ -272,17 +225,6 @@ void FileGatherer::listFiles(const ID_Path_pairList & path_pairList)
 			memset(m_hashTree[i][j], 0, HASH_LENGTH * sizeof(HashTreePtr));
 		}
 	}
-
-
-	/*
-	 * The performance here with multi-threading is frankly really bad. It's actually so bad,
-	 * that I decided to run it in single-thread till I figure out how to make it work.
-	 */
-	// thread thrd_fs(&FileGatherer::createFileList, this, path_pairList);
-	// thread thrd_db(&FileGatherer::readFromDb, this);
-
-	// thrd_fs.join();
-	// thrd_db.join();
 
 	createFileList(path_pairList);
 	readFromDb();
@@ -373,45 +315,19 @@ bool FileGatherer::checkPairExistence(const short int * indices, const uint32_t 
 {
 	HashTreePtr ht_ptr = m_hashTree[indices[0]][indices[1]][indices[2]];
 
-	for (size_t i = 0; i < getSize<HashTree>(ht_ptr); i++)
+	size_t s = ht_ptr->size();
+	for (size_t i = 0; i < s; i++)
 	{
 		HashLeaf * t_it = ht_ptr->at(i);
+		FileInfoProxy * l_proxy = t_it->front();
+		FileInfo l_fi = getFileInfo(l_proxy);
 
-		size_t s = getSize<HashLeaf>(t_it);
-		for (size_t j = 0; j < s; j++)
+		if (hash == l_fi.m_hash)
 		{
-			FileInfoProxy * l_proxy = t_it->at(j);
-
-			/*
-			 * It would be great if I could do something like this:
-			 *
-			 * if (getSource(proxy->m_flags) == getSource(l_proxy->m_flags))
-			 * 		continue;
-			 *
-			 * The performance speed-up is tremendous: about 5x faster on my machine.
-			 * It would skip lots of uneeded cycle loops because we don't need to check for hash equality
-			 * if the source is the same.
-			 *
-			 * But it doesn't work always - when interating through a small number of files it works just perfect
-			 * but with a lot of files (about 100k) it will give us false positives when calling getChanges()
-			 * many false results with flags F_SRC_FS and F_ACTION_ADD set to true.
-			 *
-			 * So I'll implement this later (or maybe never if I actually find out that this piece of code was actually
-			 * a bad idea).
-			 */
-
-			FileInfo l_fi = getFileInfo(l_proxy);
-
-			if (hash == l_fi.m_hash)
-			{
-				{
-					mutex::scoped_lock lock(m_mutex);
-					t_it->push_back(proxy);
-				}
-
-				return true;
-			}
+			t_it->push_back(proxy);
+			return true;
 		}
+
 	}
 
 	return false;
@@ -427,12 +343,8 @@ FileGatherer::FileInfo FileGatherer::getFileInfo(const FileGatherer::FileInfoPro
 	{
 		char buffer[sizeof(FileInfo)];
 
-		{
-			mutex::scoped_lock ioLock(m_ioMutex);
-
-			m_dbFileIStream->seekg(*(FileInfoProxy::src_db_t*)proxy->m_object);
-			m_dbFileIStream->readsome(buffer, sizeof(FileInfo));
-		}
+		m_dbFileIStream->seekg(*(FileInfoProxy::src_db_t*)proxy->m_object);
+		m_dbFileIStream->readsome(buffer, sizeof(FileInfo));
 
 		FileInfo * fiPtr = (FileInfo*)buffer;
 
@@ -459,8 +371,6 @@ FileGatherer::FILE_INFO_FLAG FileGatherer::getSource(short int flags)
 
 void FileGatherer::insertIntoHashTree(FileGatherer::FileInfoProxy * proxy, short int * indices)
 {
-	mutex::scoped_lock lock(m_mutex);
-
 	HashLeaf * leafPtr = new HashLeaf;
 	leafPtr->push_back(proxy);
 
@@ -495,12 +405,8 @@ void FileGatherer::readFromDb()
 	{
 		offset = getOffset(i);
 
-		{
-			mutex::scoped_lock ioLock(m_ioMutex);
-
-			m_dbFileIStream->seekg(offset);
-			m_dbFileIStream->readsome(buffer, sizeof(FileInfo));
-		}
+		m_dbFileIStream->seekg(offset);
+		m_dbFileIStream->readsome(buffer, sizeof(FileInfo));
 
 		short int indices[3];
 
@@ -512,25 +418,15 @@ void FileGatherer::readFromDb()
 		FileInfoProxy::src_db_t * streamPosPtr;
 		FileInfoProxy * fiProxyPtr;
 
+		streamPosPtr = new FileInfoProxy::src_db_t(offset);
+		fiProxyPtr = new FileInfoProxy((void*)streamPosPtr, F_SRC_DB);
+
+		if (!m_hashTree[indices[0]][indices[1]][indices[2]])
 		{
-			mutex::scoped_lock lock(m_mutex);
+			m_hashTree[indices[0]][indices[1]][indices[2]] = new HashTree;
+			insertIntoHashTree(fiProxyPtr, indices);
 
-			streamPosPtr = new FileInfoProxy::src_db_t(offset);
-			fiProxyPtr = new FileInfoProxy((void*)streamPosPtr, F_SRC_DB);
-		}
-
-		{
-			mutex::scoped_lock lock(m_mutex);
-
-			if (!m_hashTree[indices[0]][indices[1]][indices[2]])
-			{
-				m_hashTree[indices[0]][indices[1]][indices[2]] = new HashTree;
-				HashLeaf * leafPtr = new HashLeaf;
-				leafPtr->push_back(fiProxyPtr);
-				m_hashTree[indices[0]][indices[1]][indices[2]]->push_back(leafPtr);
-				
-				continue;
-			}
+			continue;
 		}
 
 		if (!checkPairExistence(indices, fi.m_hash, fiProxyPtr))

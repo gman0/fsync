@@ -26,7 +26,6 @@
 #include <vector>
 #include <map>
 #include <utility>
-#include <boost/thread/mutex.hpp>
 #include "Config.h"
 #include "defs.h"
 
@@ -86,7 +85,6 @@ class FileGatherer
 		typedef std::vector<FileInfo> FIvector;
 
 
-
 		enum FILE_INFO_FLAG
 		{
 			F_NONE =			0x0000,
@@ -141,8 +139,6 @@ class FileGatherer
 		// 3-dimensional array of pointers to std::vector<std::vector<FileInfoProxy*>*>*
 		HashTreePtr *** m_hashTree;
 
-		boost::mutex m_mutex;
-		boost::mutex m_ioMutex;
 
 	public:
 		FileGatherer(Config * config);
@@ -165,9 +161,6 @@ class FileGatherer
 	private:
 		inline size_t getOffset(size_t n) { return n * sizeof(FileInfo); }
 		inline int offsetToIndex(size_t offset) { return offset / sizeof(FileInfo); }
-		
-		template <typename Container>
-		inline size_t getSize(Container * c) { /*boost::mutex::scoped_lock lock(m_mutex);*/ return c->size(); }
 
 		void createFileList(const ID_Path_pairList & path_pairList);
 
@@ -187,9 +180,6 @@ class FileGatherer
 
 		void readFromDb();
 		void writeToDb(FIvector & fileInfoVec) const;
-
-		void thread_add(FIvector & dbContents);
-		void thread_change_delete(FIvector & dbContents);
 };
 
 #endif // FILE_GATHERER_H
