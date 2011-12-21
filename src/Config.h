@@ -27,7 +27,8 @@
 class Config : public ConfigParser
 {
 	public:
-		Config(int argc, const char * argv[], const char * configFileName);
+		Config(int argc, char * argv[], const char * configFilePath);
+		Config(int argc, char * argv[], const boost::filesystem::path & configFilePath);
 
 		unsigned int getPort();
 		bool recursiveFileSearchEnabled();

@@ -23,7 +23,11 @@
 using namespace std;
 using namespace boost::filesystem;
 
-Config::Config(int argc, const char * argv[], const char * configFileName) : ConfigParser(configFileName)
+Config::Config(int argc, char ** argv, const char * configFilePath) : ConfigParser(configFilePath)
+{
+}
+
+Config::Config(int argc, char ** argv, const path & configFilePath) : ConfigParser(configFilePath.c_str())
 {
 }
 
