@@ -19,7 +19,7 @@
 
 #include <ctime>
 #include <fstream>
-#include <boost/filesystem.hpp>
+#include <iostream>
 #include "LogManager.h"
 #include "FSException.h"
 
@@ -28,19 +28,38 @@ using namespace boost::filesystem;
 
 LogManager * LogManager::m_instance = NULL;
 
-void LogManager::instance(const char * path)
+void LogManager::instance(const char * logFilePath)
 {
-	m_instance = new LogManager;
+	path p(logFilePath);
 
-	if (exists(path))
+	if (exists(p))
 	{
-		if (is_directory(path))
-			throw FSException("Path to log file is a directory, file expected", __FILE__, __LINE__);
-
-		m_instance->m_logPath = path;
+		if (!is_regular_file(p))
+		{
+			string errMsg = p.c_str();
+			errMsg += " is not a file";
+			throw FSException(errMsg, __FILE__, __LINE__);
+		}
 	}
-	else
-		m_instance->m_logPath = "fsync_server.log";
+
+	m_instance = new LogManager;
+	m_instance->m_logPath = logFilePath;
+}
+
+void LogManager::instance(const path & logFilePath)
+{
+	if (exists(logFilePath))
+	{
+		if (!is_regular_file(logFilePath))
+		{
+			string errMsg = logFilePath.c_str();
+			errMsg += " is not a file";
+			throw FSException(errMsg, __FILE__, __LINE__);
+		}
+	}
+
+	m_instance = new LogManager;
+	m_instance->m_logPath = logFilePath;
 }
 
 void LogManager::destroy()
@@ -65,7 +84,7 @@ void LogManager::log(const char * msg, int level, bool stdOutput)
 	string stime = ctime(&rawTime);
 	stime = stime.substr(0, stime.length() - 1); // omg! Why the \n ???
 
-	ofstream logFile(m_logPath, ofstream::app);
+	ofstream logFile(m_logPath.c_str(), ofstream::app);
 
 	logFile << "[" << stime << "] ";
 

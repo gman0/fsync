@@ -21,12 +21,13 @@
 #define LOG_MANAGER_H
 
 #include <string>
+#include <boost/filesystem.hpp>
 
 class LogManager
 {
 	private:
 		static LogManager * m_instance;
-		const char * m_logPath;
+		boost::filesystem::path m_logPath;
 	
 	public:
 		enum
@@ -43,7 +44,8 @@ class LogManager
 		LogManager & operator=(const LogManager & lm);
 	
 	public:
-		static void instance(const char * path);
+		static void instance(const char * logFilePath);
+		static void instance(const boost::filesystem::path & logFilePath);
 		void destroy();
 
 		static LogManager & getInstance();
