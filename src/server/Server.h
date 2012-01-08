@@ -20,28 +20,48 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-#include <boost/filesystem.hpp>
-#include "Config.h"
-#include "LogManager.h"
+#include "AppInterface.h"
 #include "NetworkManager.h"
 #include "FileGatherer.h"
+#include "Packet.h"
 
-class Server
+class Server : public AppInterface
 {
 	private:
-		Config * m_config;
+		PathTransform * m_pathTransform;
 		FileGatherer * m_fileGatherer;
 		NetworkManager * m_networkManager;
+
+		FileGatherer::FIProxyPtrVector m_proxyVector;
+		FileGatherer::FIProxyPtrVector m_proxyRollBackVector;
+
+	public:
+		Server(int argc, char ** argv);
+		~Server();
+
 	private:
 		Server(const Server & s);
 		const Server & operator=(const Server & s);
 
-	public:
-		Server();
-		~Server();
-	
-	private:
-		void checkAndCreate(const boost::filesystem::path & p);
+		void getClient();
+		void transferFiles();
+
+		void sendObjectCount(size_t size);
+		PacketHeader prepareFileTransfer(const FileGatherer::FileInfoProxy * proxy);
+
+		PacketHeader packFileInfo(const FileGatherer::FileInfo * fi, short int flags);
+
+		/*
+		 * If we encounter an error from the client side we "roll back" the changes gathered from
+		 * file system and save them into database using FileGatherer's updateDb so we can redo
+		 * the action when the user runs server again.
+		 */
+		void rollBack(const FileGatherer::FileInfoProxy * proxy);
+		void addRollBack(FileGatherer::FileInfoProxy * proxy);
+
+		void handleNew(bool hasFreeSpace, FileGatherer::FileInfoProxy * proxy);
+		void handleChange();
+		void handleDelete();
 };
 
 #endif // SERVER_H
