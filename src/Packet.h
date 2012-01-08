@@ -25,23 +25,56 @@
 #include <cstring>
 #include "defs.h"
 
-enum PCKT_TYPE_ID
+enum PACKET_TYPE_ID
 {
-	PCKT_FILE,
-	PCKT_FILE_CHUNK,
-	PCKT_CHUNK_INFO
+	PACKET_NONE = 0,
+
+	PACKET_OBJECT_COUNT,
+
+	PACKET_FILE_INFO,
+	PACKET_FILE,
+
+	PACKET_CHUNK_INFO,
+	PACKET_CHUNK,
+
+	PACKET_REQUEST_FREE_SPACE,
+	PACKET_RESPONE_FREE_SPACE,
+
+	PACKET_NEXT,    // client's done, continue
+	PACKET_SKIP,    // there was an error, but continue anyway
+	PACKET_FINISHED // everything went better than expected :)
 };
 
 struct PacketHeader
 {
-	int m_id;
-	PCKT_TYPE_ID m_type;
+	PACKET_TYPE_ID m_type;
 	unsigned char m_buffer[HEADER_BUFF_SIZE];
+
+	PacketHeader(const PACKET_TYPE_ID type, const void * data, size_t len)
+	{
+		m_type = type;
+		memcpy(m_buffer, data, len);
+	}
+
+	PacketHeader() : m_type(PACKET_NONE) {}
+
+	PacketHeader(const PacketHeader & ph)
+	{
+		m_type = ph.m_type;
+		memcpy(m_buffer, ph.m_buffer, sizeof(PacketHeader));
+	}
+
+	const PacketHeader & operator=(const PacketHeader & ph)
+	{
+		m_type = ph.m_type;
+		memcpy(m_buffer, ph.m_buffer, sizeof(PacketHeader));
+
+		return *this;
+	}
 };
 
 struct PacketData
 {
-	int m_id;
 	unsigned char m_buffer[BLOCK_SIZE];
 };
 
@@ -54,38 +87,63 @@ struct PacketHeader_Interface
 	char m_path[480];
 };
 
-struct PacketHeader_File : public PacketHeader_Interface {};
+struct PacketHeader_FileInfo
+{
+	/*
+	 * ACTION is compatible with FileGatherer::FILE_INFO_FLAG
+	 */
+	enum ACTION
+	{
+		A_NONE		= 0x0000,
 
-struct PacketHeader_FileChunk : public PacketHeader_Interface
+		A_ADD		= 0x0004,
+		A_CHANGE	= 0x0008,
+		A_DELETE	= 0x0010
+	};
+
+	short int m_pathId;
+	ACTION m_action;
+	uint64_t m_size;
+	char m_path[PATH_LENGTH];
+
+	PacketHeader_FileInfo() : m_pathId(0), m_action(A_NONE), m_size(0) {}
+
+	PacketHeader_FileInfo(short int pathId, ACTION action, uint64_t size, const char * path)
+	{
+		m_pathId = pathId;
+		m_action = action;
+		m_size = size;
+		strcpy(m_path, path);
+	}
+
+	PacketHeader_FileInfo(const PacketHeader_FileInfo & ph_fi)
+	{
+		m_pathId = ph_fi.m_pathId;
+		m_action = ph_fi.m_action;
+		m_size = ph_fi.m_size;
+		strcpy(m_path, ph_fi.m_path);
+	}
+
+	const PacketHeader_FileInfo & operator=(const PacketHeader_FileInfo & ph_fi)
+	{
+		m_pathId = ph_fi.m_pathId;
+		m_action = ph_fi.m_action;
+		strcpy(m_path, ph_fi.m_path);
+		m_size = ph_fi.m_size;
+
+		return *this;
+	}
+};
+
+struct PacketHeader_fileChunk : public PacketHeader_Interface
 {
 	int m_chunkId;
 };
 
-struct PacketHeader_ChunkInfo : public PacketHeader_Interface
+struct PacketHeader_chunkInfo : public PacketHeader_Interface
 {
 	int m_chunkId;
 	char m_hash[HASH_LENGTH];
-};
-
-
-// obsolete
-struct Packet
-{
-	Uint8 m_type;
-	unsigned char m_buffer[512];
-	Uint32 len;
-	
-	void deserialize(void * buffer)
-	{
-		Packet * p = (Packet*)buffer;
-		m_type = p->m_type;
-		memcpy(m_buffer, p->m_buffer, 512);
-	}
-
-	void * serialize() const
-	{
-		return (void*)this;
-	}
 };
 
 #endif // PACKET_H
