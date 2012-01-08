@@ -48,12 +48,24 @@ class FSException : public exception
 			makeErrorMsg();
 		}
 
+		FSException(const string & message)
+		{
+			m_message = message;
+		}
+
+		FSException(const char * message)
+		{
+			m_message = message;
+		}
+
 		void makeErrorMsg()
 		{
-			m_what = m_file;
+			/*m_what = m_file;
 			m_what += ':';
 			m_what += m_line;
 			m_what += ": " + m_message;
+			*/
+			m_what = m_message;
 		}
 
 		virtual const char * what() const throw()
