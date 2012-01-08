@@ -1,24 +1,38 @@
-#ifndef NETWORK_MANAGER
-#define NETWORK_MANAGER
+/*
+	Copyright (C) 2011 Róbert Vašek <gman@codefreax.org>
 
-#include <SDL/SDL.h>
+    This file is part of fsync.
+
+    fsync is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    fsync is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with fsync.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#ifndef NETWORK_MANAGER_H
+#define NETWORK_MANAGER_H
+
 #include <SDL/SDL_net.h>
-#include "Packet.h"
+#include "NetworkManagerInterface.h"
 
-class NetworkManager
+class NetworkManager : public NetworkManagerInterface
 {
-	private:
-		TCPsocket m_serverSocketDescriptor;
-		IPaddress m_serverIP;
-
 	public:
-		NetworkManager(const char * ip, int port);
-		~NetworkManager();
+		NetworkManager(const char * ip, int port) : NetworkManagerInterface(ip, port) {}
 
-		void openSocket();
+		bool tryOpenSocket();
 		void closeConnection();
-		bool send(const Packet & pckt) const;
-		void recieve(Packet & pckt) const;
+
+		bool send(const void * data, int len) const;
+		void recv(void * data, int len) const;
 };
 
-#endif // NETWORK_MANAGER
+#endif // NETWORK_MANAGER_H
