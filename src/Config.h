@@ -22,18 +22,22 @@
 
 #include <list>
 #include <boost/filesystem.hpp>
+#include <string>
 #include "ConfigParser.h"
 
 class Config : public ConfigParser
 {
 	public:
-		Config(int argc, char * argv[], const char * configFilePath);
-		Config(int argc, char * argv[], const boost::filesystem::path & configFilePath);
+		Config(int argc, char * argv[], const char * configFilePath, const char * fsyncHomePath);
+		Config(int argc, char * argv[], const boost::filesystem::path & configFilePath,
+										const boost::filesystem::path & fsyncHomePath);
 
 		unsigned int getPort();
+		std::string getHost();
 		bool recursiveFileSearchEnabled();
+		bool partialFileTransferEnabled();
 		ID_Path_pairList getPathList();
-		boost::filesystem::path getFilesDbPath();
+		boost::filesystem::path getFileDbPath();
 		bool forceNoChangeCheck();
 };
 

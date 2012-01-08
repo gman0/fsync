@@ -23,17 +23,25 @@
 using namespace std;
 using namespace boost::filesystem;
 
-Config::Config(int argc, char ** argv, const char * configFilePath) : ConfigParser(configFilePath)
+Config::Config(int argc, char ** argv, const char * configFilePath, const char * fsyncHomePath) :
+	ConfigParser(configFilePath, fsyncHomePath)
 {
 }
 
-Config::Config(int argc, char ** argv, const path & configFilePath) : ConfigParser(configFilePath.c_str())
+Config::Config(int argc, char ** argv, const path & configFilePath, const path & fsyncHomePath) :
+	ConfigParser(configFilePath, fsyncHomePath)
 {
 }
 
 unsigned int Config::getPort()
 {
-	return ConfigParser::getPort();
+	unsigned int port = ConfigParser::getPort();
+	return (port) ? port : 2000;
+}
+
+string Config::getHost()
+{
+	return ConfigParser::getHost();
 }
 
 bool Config::recursiveFileSearchEnabled()
@@ -41,14 +49,19 @@ bool Config::recursiveFileSearchEnabled()
 	return ConfigParser::recursiveFileSearchEnabled();
 }
 
+bool Config::partialFileTransferEnabled()
+{
+	return ConfigParser::partialFileTransferEnabled();
+}
+
 ID_Path_pairList Config::getPathList()
 {
 	return ConfigParser::getPathList();
 }
 
-path Config::getFilesDbPath()
+path Config::getFileDbPath()
 {
-	return ConfigParser::getFilesDbPath();
+	return ConfigParser::getFileDbPath();
 }
 
 bool Config::forceNoChangeCheck()
