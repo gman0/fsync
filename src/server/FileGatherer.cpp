@@ -23,24 +23,24 @@
 #include <cstdlib>
 #include "FileGatherer.h"
 #include "PathTransform.h"
-#include "hash.h"
 #include "FSException.h"
 #include "LogManager.h"
 
 using namespace std;
 using namespace boost::filesystem;
 
-FileGatherer::FileGatherer(Config * config) :
+FileGatherer::FileGatherer(Config * config, PathTransform * pathTransform, ID_Path_pairList & id_path_pairList) :
 	m_config(config),
-	m_filesDbPath(config->getFilesDbPath()),
+	m_pathTransform(pathTransform),
+	m_fileDbPath(config->getFileDbPath()),
 	m_dbFileIStream(0)
 {
-	if (exists(m_filesDbPath))
+	if (exists(m_fileDbPath))
 	{
-		if (!is_regular_file(m_filesDbPath))
+		if (!is_regular_file(m_fileDbPath))
 		{
-			string errMsg = "Path to files database is not a file \"";
-			errMsg += m_filesDbPath.c_str();
+			string errMsg = "Path to file database is not a file \"";
+			errMsg += m_fileDbPath.c_str();
 			errMsg += '\"';
 			LogManager::getInstancePtr()->log(errMsg, LogManager::L_ERROR);
 			throw FSException(errMsg, __FILE__, __LINE__);
@@ -50,26 +50,9 @@ FileGatherer::FileGatherer(Config * config) :
 	cout << "Creating file list..." << flush;
 
 	m_dbFileIStream = new ifstream;
-
-	ID_Path_pairList id_path_pairList = config->getPathList();
-	m_pathTransform = new PathTransform(id_path_pairList);
 	listFiles(id_path_pairList);
 
 	cout << "done." << endl;
-
-
-	cout << "Gathering changes..." << flush;
-	FIProxyPtrVector changed = getChanges();
-	cout << "done." << endl;
-
-	for (FIProxyPtrVector::iterator it = changed.begin(); it != changed.end(); it++)
-	{
-		FileInfo fi = getFileInfo(*it);
-		short int flags = (*it)->m_flags;
-		cout << "path: " << fi.m_path << " flags: " << ((getSource(flags) == F_SRC_FS) ? "F_SRC_FS" : "F_SRC_DB")
-			 << "; flaggedAdd " << flaggedAdd(flags) << "; flaggedDelete " << flaggedDelete(flags)
-			 << "; flaggedChange " << flaggedChange(flags) << endl;
-	}
 }
 
 FileGatherer::~FileGatherer()
@@ -109,8 +92,6 @@ FileGatherer::~FileGatherer()
 	}
 
 	delete [] m_hashTree;
-
-	delete m_pathTransform;
 
 	if (m_dbFileIStream->is_open())
 		m_dbFileIStream->close();
@@ -233,6 +214,8 @@ void FileGatherer::listFiles(const ID_Path_pairList & path_pairList)
 FileGatherer::FIProxyPtrVector FileGatherer::getChanges()
 {
 	FIProxyPtrVector proxyPtrVector;
+	int add, change, del;
+	add = change = del = 0;
 
 	for (int i = 0; i < HASH_LENGTH; i++)
 	{
@@ -255,11 +238,13 @@ FileGatherer::FIProxyPtrVector FileGatherer::getChanges()
 							{
 								proxyPtr->m_flags |= F_ACTION_ADD;
 								proxyPtrVector.push_back(proxyPtr);
+								add++;
 							}
 							else if (source == F_SRC_DB)
 							{
 								proxyPtr->m_flags |= F_ACTION_DELETE;
 								proxyPtrVector.push_back(proxyPtr);
+								del++;
 							}
 						}
 						else if (size == 2)
@@ -272,14 +257,21 @@ FileGatherer::FIProxyPtrVector FileGatherer::getChanges()
 								// doesn't matter wich proxy
 								p1->m_flags |= F_ACTION_CHANGE;
 								proxyPtrVector.push_back(p1);
+								change++;
 							}
-
 						}
 					}
 				}
 			}
 		}
 	}
+
+	if (!proxyPtrVector.empty())
+		cout << add << " file(s) marked as new, " << change << " as changed, " << del << " marked for deletion.";
+	else
+		cout << "no changes.";
+	
+	cout << endl;
 
 	return proxyPtrVector;
 }
@@ -295,7 +287,7 @@ FileGatherer::FileInfo FileGatherer::assembleFileInfo(const PathId id, const pat
 	return fi;
 }
 
-void FileGatherer::generateIndices(const uint32_t & hash, short int * indices)
+void FileGatherer::generateIndices(const hash_t & hash, short int * indices)
 {
 	char digits[HASH_LENGTH + 1];
 	char tmp[2];
@@ -311,7 +303,7 @@ void FileGatherer::generateIndices(const uint32_t & hash, short int * indices)
 	}
 }
 
-bool FileGatherer::checkPairExistence(const short int * indices, const uint32_t & hash, FileGatherer::FileInfoProxy * proxy)
+bool FileGatherer::checkPairExistence(const short int * indices, const hash_t & hash, FileGatherer::FileInfoProxy * proxy)
 {
 	HashTreePtr ht_ptr = m_hashTree[indices[0]][indices[1]][indices[2]];
 
@@ -354,6 +346,14 @@ FileGatherer::FileInfo FileGatherer::getFileInfo(const FileGatherer::FileInfoPro
 	return FileInfo();
 }
 
+FileGatherer::FileInfo * FileGatherer::getFileInfoPtr_SRC_FS(const FileGatherer::FileInfoProxy * proxy)
+{
+	if (getSource(proxy->m_flags) != F_SRC_FS)
+		return 0;
+	
+	return &m_fileInfoVector.at(*(FileInfoProxy::src_fs_t*)proxy->m_object);
+}
+
 bool FileGatherer::isOn(short int flags, FileGatherer::FILE_INFO_FLAG f)
 {
 	return ((flags & f) == f);
@@ -369,6 +369,18 @@ FileGatherer::FILE_INFO_FLAG FileGatherer::getSource(short int flags)
 		return F_NONE;
 }
 
+FileGatherer::FILE_INFO_FLAG FileGatherer::getAction(short int flags)
+{
+	if (isOn(flags, F_ACTION_ADD))
+		return F_ACTION_ADD;
+	else if (isOn(flags, F_ACTION_CHANGE))
+		return F_ACTION_CHANGE;
+	else if (isOn(flags, F_ACTION_DELETE))
+		return F_ACTION_DELETE;
+	else
+		return F_NONE;
+}
+
 void FileGatherer::insertIntoHashTree(FileGatherer::FileInfoProxy * proxy, short int * indices)
 {
 	HashLeaf * leafPtr = new HashLeaf;
@@ -379,25 +391,25 @@ void FileGatherer::insertIntoHashTree(FileGatherer::FileInfoProxy * proxy, short
 
 void FileGatherer::readFromDb()
 {
-	if (!exists(m_filesDbPath))
+	if (!exists(m_fileDbPath))
 	{
-		string errMsg = "Files database file \"";
-		errMsg += m_filesDbPath.string() + "\" not found";
+		string errMsg = "File database file \"";
+		errMsg += m_fileDbPath.string() + "\" not found";
 		LogManager::getInstancePtr()->log(errMsg, LogManager::L_ERROR);
 		throw FSException(errMsg, __FILE__, __LINE__);
 	}
 
-	m_dbFileIStream->open(m_filesDbPath.c_str());
+	m_dbFileIStream->open(m_fileDbPath.c_str());
 
 	if (!m_dbFileIStream->is_open())
 	{
-		string errMsg = "Cannot open files database file \"";
-		errMsg += m_filesDbPath.string() + "\" for reading";
+		string errMsg = "Cannot open file database file \"";
+		errMsg += m_fileDbPath.string() + "\" for reading";
 		LogManager::getInstancePtr()->log(errMsg, LogManager::L_ERROR);
 		throw FSException(errMsg, __FILE__, __LINE__);
 	}
 
-	int count = file_size(m_filesDbPath) / sizeof(FileInfo);
+	int count = file_size(m_fileDbPath) / sizeof(FileInfo);
 	char buffer[sizeof(FileInfo)];
 	size_t offset = 0;
 
@@ -436,12 +448,12 @@ void FileGatherer::readFromDb()
 
 void FileGatherer::writeToDb(FileGatherer::FIvector & fileInfoVec) const
 {
-	ofstream fout(m_filesDbPath.c_str());
+	ofstream fout(m_fileDbPath.c_str());
 
 	if (!fout.is_open())
 	{
-		string errMsg = "Cannot open files database file \"";
-		errMsg += m_filesDbPath.string() + "\" for writing";
+		string errMsg = "Cannot open file database file \"";
+		errMsg += m_fileDbPath.string() + "\" for writing";
 		LogManager::getInstancePtr()->log(errMsg, LogManager::L_ERROR);
 		throw FSException(errMsg, __FILE__, __LINE__);
 	}

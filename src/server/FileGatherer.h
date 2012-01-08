@@ -28,6 +28,7 @@
 #include <utility>
 #include "Config.h"
 #include "defs.h"
+#include "hash.h"
 
 class PathTransform;
 
@@ -40,7 +41,7 @@ class FileGatherer
 		{
 			PathId m_pathId;
 			char m_path[PATH_LENGTH];
-			uint32_t m_hash;
+			hash_t m_hash;
 			time_t m_lastWrite;
 
 			FileInfo() : m_hash(0) {}
@@ -129,7 +130,7 @@ class FileGatherer
 
 		Config * m_config;
 		PathTransform * m_pathTransform;
-		boost::filesystem::path m_filesDbPath;
+		boost::filesystem::path m_fileDbPath;
 
 		FIvector m_fileInfoVector;
 
@@ -141,15 +142,21 @@ class FileGatherer
 
 
 	public:
-		FileGatherer(Config * config);
+		FileGatherer(Config * config, PathTransform * pathTransform, ID_Path_pairList & id_path_pairList);
 		~FileGatherer();
 
 		void updateDb();
 		FIProxyPtrVector getChanges();
 
-		FileInfo getFileInfo(const FileInfoProxy * p);
+		FileInfo getFileInfo(const FileInfoProxy * proxy);
+
+		/*
+		 * Changing the size of m_fileInfoVector while using this method will result an in invalid pointer.
+		 */
+		FileInfo * getFileInfoPtr_SRC_FS(const FileInfoProxy * proxy);
 
 		FILE_INFO_FLAG getSource(short int flags);
+		FILE_INFO_FLAG getAction(short int flags);
 
 		bool isOn(short int flags, FILE_INFO_FLAG f);
 		inline bool isOff(short int flags, FILE_INFO_FLAG f) { return !isOn(flags, f); }
