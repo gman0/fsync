@@ -67,18 +67,21 @@ typedef std::list<std::pair<PathId, boost::filesystem::path> > ID_Path_pairList;
 class ConfigParser
 {
 	private:
-		const char * m_configFileName;
+		boost::filesystem::path m_configFilePath;
+		boost::filesystem::path m_fsyncHomePath;
 		CFGMap  m_pairs;
 
 	public:
-		ConfigParser(const char * configFile);
+		ConfigParser(const char * configFile, const char * fsyncHomePath);
+		ConfigParser(const boost::filesystem::path & configFile, const boost::filesystem::path & fsyncHomePath);
 
 	protected:
 		ID_Path_pairList getPathList();
 		unsigned int getPort();
 		bool recursiveFileSearchEnabled();
+		bool partialFileTransferEnabled();
 		std::string getHost();
-		boost::filesystem::path getFilesDbPath();
+		boost::filesystem::path getFileDbPath();
 
 	private:
 		void generatePairs(const std::string & configBuffer);

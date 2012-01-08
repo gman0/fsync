@@ -28,7 +28,8 @@
 using namespace std;
 using namespace boost::filesystem;
 
-ConfigParser::ConfigParser(const char * configFile) : m_configFileName(configFile)
+ConfigParser::ConfigParser(const char * configFile, const char * fsyncHomePath) :
+	m_configFilePath(configFile), m_fsyncHomePath(fsyncHomePath)
 {
 	ifstream fin(configFile);
 	string configBuffer;
@@ -55,7 +56,40 @@ ConfigParser::ConfigParser(const char * configFile) : m_configFileName(configFil
 	}
 
 	fin.close();
-	
+
+
+	generatePairs(configBuffer);
+}
+
+ConfigParser::ConfigParser(const path & configFile, const path & fsyncHomePath) :
+	m_configFilePath(configFile), m_fsyncHomePath(fsyncHomePath)
+{
+	ifstream fin(configFile.c_str());
+	string configBuffer;
+	string buff;
+
+	if (fin.is_open())
+	{
+		while (fin.good())
+		{
+			getline(fin, buff);
+
+			// if this isn't just an empty line or a comment
+			if (buff[0] != '\0' && buff[0] != '#')
+				configBuffer += buff + '\n';
+		}
+	}
+	else
+	{
+		string errMsg = "Cannot read configuration file \"";
+		errMsg += configFile.c_str();
+		errMsg += '\"';
+		LogManager::getInstancePtr()->log(errMsg, LogManager::L_ERROR);
+		throw FSException(errMsg, __FILE__, __LINE__);
+	}
+
+	fin.close();
+
 
 	generatePairs(configBuffer);
 }
@@ -110,7 +144,7 @@ void ConfigParser::generatePairs(const string & configBuffer)
 void ConfigParser::reportError(const string & where, const string & what, bool appendSkipping) const
 {
 	string errMsg("ConfigParser error(");
-	errMsg += m_configFileName;
+	errMsg += m_configFilePath.c_str();
 	errMsg += "): there was an error during processing this part of line: \"" + where + "\" - " + what;
 
 	if (appendSkipping)
@@ -228,10 +262,10 @@ bool ConfigParser::string2bool(const string & str) const
 	if (str.length() == 0)
 		return false; // defaults to false
 
-	const int count = 3;
+	const int count = 4;
 
-	string _true[count] = {"true", "yes", "1"};
-	string _false[count] = {"false", "no", "0"};
+	string _true[count] = {"true", "yes", "1", "enable"};
+	string _false[count] = {"false", "no", "0", "disable"};
 
 	for (int i = 0; i < count; i++)
 	{
@@ -245,7 +279,7 @@ bool ConfigParser::string2bool(const string & str) const
 			return false;
 	}
 
-	reportError(str, "boolean value expected (true/yes/1 or false/no/0), defaulting to false", false);
+	reportError(str, "boolean value expected (true/yes/1/enable or false/no/0/disable), defaulting to false", false);
 
 	return false;
 }
@@ -266,7 +300,17 @@ Return ConfigParser::checkKey(list<string> & l, const char * arg)
 
 bool ConfigParser::recursiveFileSearchEnabled()
 {
-	list<string> l = m_pairs["recursiveFileSearch"];
+	list<string> l = m_pairs["recursive_search"];
+
+	if (l.empty())
+		return false;
+
+	return string2bool(l.back());
+}
+
+bool ConfigParser::partialFileTransferEnabled()
+{
+	list<string> l = m_pairs["partial_file_transfer"];
 
 	if (l.empty())
 		return false;
@@ -280,8 +324,8 @@ string ConfigParser::getHost()
 	return checkKey<string>(l, "");
 }
 
-path ConfigParser::getFilesDbPath()
+path ConfigParser::getFileDbPath()
 {
-	list<string> l = m_pairs["filesDbPath"];
-	return checkKey<path>(l, "server.db");
+	list<string> l = m_pairs["file_database_path"];
+	return checkKey<path>(l, (m_fsyncHomePath / "server.db").c_str());
 }
