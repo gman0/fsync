@@ -35,7 +35,8 @@ void MurmurHash3_x64_128 ( const void * key, int len, uint32_t seed, void * out 
 //-----------------------------------------------------------------------------
 
 
-uint32_t calculateHash(const unsigned char * data, int len);
+typedef uint32_t hash_t;
+hash_t calculateHash(const unsigned char * data, int len);
 
 
 #endif // _MURMURHASH3_H_

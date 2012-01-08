@@ -337,9 +337,9 @@ void MurmurHash3_x64_128 ( const void * key, const int len,
 /*
  * TODO: implement usage of MurMurHash3_* according to which platform is the target machine
  */
-uint32_t calculateHash(const unsigned char * data, int len)
+hash_t calculateHash(const unsigned char * data, int len)
 {
-	uint32_t hash;
+	hash_t hash;
 	MurmurHash3_x86_32(data, len, 10, &hash);
 
 	return hash;
