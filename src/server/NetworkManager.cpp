@@ -17,58 +17,8 @@
     along with fsync.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <string>
+#include <cstdio>
 #include "NetworkManager.h"
-#include "LogManager.h"
-#include "FSException.h"
-
-NetworkManager::NetworkManager(int port)
-{
-	string errorMsg;
-
-	if (SDL_Init(0) == -1)
-	{
-		errorMsg = "SDL_Init: ";
-		errorMsg += SDL_GetError();
-		LogManager::getInstancePtr()->log(errorMsg, LogManager::L_ERROR);
-		throw FSException(errorMsg, __FILE__, __LINE__);
-	}
-
-	if (SDLNet_Init() == -1)
-	{
-		errorMsg = "SDLNet_Init: ";
-		errorMsg += SDLNet_GetError();
-		LogManager::getInstancePtr()->log(errorMsg, LogManager::L_ERROR);
-		throw FSException(errorMsg, __FILE__, __LINE__);
-	}
-
-	if (SDLNet_ResolveHost(&m_serverIP, NULL, port) < 0)
-	{
-		errorMsg = "SDLNet_ResloveHost: ";
-		errorMsg += SDLNet_GetError();
-		LogManager::getInstancePtr()->log(errorMsg, LogManager::L_ERROR);
-		throw FSException(errorMsg, __FILE__, __LINE__);
-	}
-}
-
-NetworkManager::~NetworkManager()
-{
-	SDLNet_Quit();
-	SDL_Quit();
-}
-
-void NetworkManager::openSocket()
-{
-	m_serverSocketDescriptor = SDLNet_TCP_Open(&m_serverIP);
-
-	if (!m_serverSocketDescriptor)
-	{
-		string err = "SDLNet_TCP_Open: ";
-		err += SDLNet_GetError();
-		LogManager::getInstancePtr()->log(err, LogManager::L_ERROR);
-		throw FSException(err, __FILE__, __LINE__);
-	}
-}
 
 bool NetworkManager::acceptConnection()
 {
@@ -78,7 +28,16 @@ bool NetworkManager::acceptConnection()
 
 void NetworkManager::closeConnection()
 {
-	SDLNet_TCP_Close(m_clientSocketDescriptor);
+	if (m_clientSocketDescriptor)
+		SDLNet_TCP_Close(m_clientSocketDescriptor);
+	
+	SDLNet_TCP_Close(m_serverSocketDescriptor);
+}
+
+void NetworkManager::closeClientConnection()
+{
+	if (m_clientSocketDescriptor)
+		SDLNet_TCP_Close(m_clientSocketDescriptor);
 }
 
 IPaddress * NetworkManager::getClientAddress()
@@ -95,22 +54,21 @@ IPaddress * NetworkManager::getClientAddress()
 	return m_clientIP;
 }
 
-bool NetworkManager::send(const Packet & pckt) const
+void NetworkManager::getClientIPAddress(char * out)
 {
-	int len = sizeof pckt;
-
-	if (SDLNet_TCP_Send(m_clientSocketDescriptor, pckt.serialize(), len) < len)
+	if (m_clientIP)
 	{
-		string err = "SDLNet_TCP_Send: ";
-		err += SDLNet_GetError();
-		LogManager::getInstancePtr()->log(err, LogManager::L_ERROR);
-		throw FSException(err, __FILE__, __LINE__);
+		uint32_t ipAddress = SDL_SwapBE32(m_clientIP->host);
+		sprintf(out, "%d.%d.%d.%d", ipAddress >> 24, (ipAddress >> 16) & 0xff, (ipAddress >> 8) & 0xff, ipAddress & 0xff);
 	}
-
-	return true;
 }
 
-void NetworkManager::recieve(Packet & pckt) const
+bool NetworkManager::send(const void * data, int len) const
 {
-	SDLNet_TCP_Recv(m_clientSocketDescriptor, (void*)&pckt, sizeof pckt);
+	return NetworkManagerInterface::send(m_clientSocketDescriptor, data, len);
+}
+
+void NetworkManager::recv(void * data, int len) const
+{
+	NetworkManagerInterface::recv(m_clientSocketDescriptor, data, len);
 }

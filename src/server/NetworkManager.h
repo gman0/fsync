@@ -17,31 +17,35 @@
     along with fsync.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef NETWORK_MANAGER
-#define NETWORK_MANAGER
+#ifndef NETWORK_MANAGER_H
+#define NETWORK_MANAGER_H
 
-#include <SDL/SDL.h>
 #include <SDL/SDL_net.h>
-#include "Packet.h"
+#include "NetworkManagerInterface.h"
 
-class NetworkManager
+class NetworkManager : public NetworkManagerInterface
 {
 	private:
-		TCPsocket m_serverSocketDescriptor;
 		TCPsocket m_clientSocketDescriptor;
-		IPaddress m_serverIP;
 		IPaddress * m_clientIP;
 
 	public:
-		NetworkManager(int port);
-		~NetworkManager();
+		NetworkManager(int port) : NetworkManagerInterface(0, port), m_clientSocketDescriptor(0), m_clientIP(0)
+		{}
 
-		void openSocket();
 		bool acceptConnection();
 		void closeConnection();
+		void closeClientConnection();
 		IPaddress * getClientAddress();
-		bool send(const Packet & pckt) const;
-		void recieve(Packet & pckt) const;
+
+		/*
+		 * out should point to an array of chars of at least 16 items
+		 * (15 for the actual IPv4 address and the last one for \0)
+		 */
+		void getClientIPAddress(char * out);
+
+		bool send(const void * data, int len) const;
+		void recv(void * data, int len) const;
 };
 
-#endif // NETWORK_MANAGER
+#endif // NETWORK_MANAGER_H
