@@ -39,8 +39,32 @@ class PathTransform
 		PathTransform(const ID_Path_pairList & id_paths) : m_id_path_pairList(id_paths)
 		{}
 
-		const boost::filesystem::path getPath(PathId pathId);
+		boost::filesystem::path getPath(PathId pathId);
 		PathId getPathId(const boost::filesystem::path & path);
+
+		/*
+		 * This is only a helper method and checks only wether the length of the path
+		 * is bigger than 0. Also bear in mind that this method also logs an error
+		 * message if the string is empty, therefore LogManager needs to be initialized
+		 * before using this method.
+		 */
+		bool checkPathAndLog(const boost::filesystem::path & path, PathId pathId);
+
+		/*
+		 * Removes path with pathId from path.
+		 *
+		 * outPath should point to the beginning of a char array with at least
+		 * PATH_LENGTH (defined in defs.h) items.
+		 *
+		 * Also note that this method does not make any checks wether path has a parent
+		 * path with pathId, so make sure you're setting the right pathId.
+		 */
+		void cutPath(PathId pathId, const char * path, char * outPath);
+
+		/*
+		 * Prepends path with pathId to p
+		 */
+		boost::filesystem::path glueCutPath(PathId pathId, const char * p);
 
 		PathList getIncludingPaths();
 		PathList getExcludingPaths();

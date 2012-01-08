@@ -17,13 +17,17 @@
     along with fsync.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <cstring>
+#include <iostream>
+#include <boost/lexical_cast.hpp>
 #include "PathTransform.h"
 #include "LogManager.h"
+#include "defs.h"
 
 using namespace std;
 using namespace boost::filesystem;
 
-const path PathTransform::getPath(PathId id)
+path PathTransform::getPath(PathId id)
 {
 	for (ID_Path_pairList::const_iterator i = m_id_path_pairList.begin(); i != m_id_path_pairList.end(); i++)
 	{
@@ -53,6 +57,32 @@ PathId PathTransform::getPathId(const path & p)
 	}
 
 	return 0;
+}
+
+bool PathTransform::checkPathAndLog(const path & p, PathId pathId)
+{
+	if (strlen(p.c_str()) == 0)
+	{
+		string errMsg = "Path with id ";
+		errMsg += boost::lexical_cast<string>(pathId);
+		errMsg += " is not defined, skipping";
+		LogManager::getInstancePtr()->log(errMsg, LogManager::L_WARNING);
+
+		return false;
+	}
+
+	return true;
+}
+
+void PathTransform::cutPath(PathId pathId, const char * pth, char * outPath)
+{
+	path p = getPath(pathId);;
+	strcpy(outPath, (pth + strlen(p.c_str()) + 1)); // +1 because of the directory separator
+}
+
+path PathTransform::glueCutPath(PathId pathId, const char * p)
+{
+	return getPath(pathId) / p;
 }
 
 PathList PathTransform::getIncludingPaths()
