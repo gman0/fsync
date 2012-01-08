@@ -22,7 +22,6 @@
 #include <string>
 #include "FSException.h"
 #include "Server.h"
-#include "PacketContainer.h"
 #include "FileGatherer.h"
 #include "PathTransform.h"
 #include "ProcessFile_load.h"
