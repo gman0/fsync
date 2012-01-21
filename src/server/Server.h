@@ -58,6 +58,7 @@ class Server : public AppInterface
 		 */
 		void rollBack(const FileGatherer::FileInfoProxy * proxy);
 		void addRollBack(FileGatherer::FileInfoProxy * proxy);
+		void commitRollBack();
 
 		void handleNew(bool hasFreeSpace, FileGatherer::FileInfoProxy * proxy);
 		void handleChange();
