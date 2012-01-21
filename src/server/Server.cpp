@@ -50,24 +50,33 @@ Server::Server(int argc, char ** argv) : AppInterface(argc, argv)
 	PacketHeader ph_final;
 	m_networkManager->recv(&ph_final, sizeof(PacketHeader));
 
-	if (ph_final.m_type == PACKET_FINISHED)
-		cout << "Synchronization finished successfuly. Quitting..." << endl;
-
 	m_networkManager->closeClientConnection();
-
 	m_networkManager->closeConnection();
+
+	if (ph_final.m_type == PACKET_FINISHED)
+		cout << "Synchronization finished successfuly." << endl;
+	else
+		cout << "There was an error during synchronization." << endl;
+	
+	if (m_proxyVector.size() > 0)
+	{
+		commitRollBack();
+
+		cout << "Updating database..." << flush;
+		m_fileGatherer->updateDb();
+		cout << "done." << endl;
+	}
 }
 
 Server::~Server()
 {
+	cout << "Quitting..." << endl;
+
 	delete m_fileGatherer;
 	delete m_pathTransform;
 	delete m_networkManager;
 }
 
-/*
- * TODO: this should be in an infinite loop
- */
 void Server::getClient()
 {
 	cout << "Waiting for client..." << endl;
@@ -94,7 +103,6 @@ void Server::transferFiles()
 		if (ph.m_type == PACKET_RESPONE_FREE_SPACE)
 			handleNew(unpackFromHeader<bool>(&ph, PACKET_RESPONE_FREE_SPACE), *proxyIt);
 	}
-
 }
 
 void Server::sendObjectCount(size_t size)
@@ -128,7 +136,7 @@ void Server::handleNew(bool hasFreeSpace, FileGatherer::FileInfoProxy * proxy)
 
 		unsigned int blocksCount = file.getBlocksCount();
 
-		for (unsigned long i = 0; i < blocksCount; i++)
+		for (unsigned int i = 0; i < blocksCount; i++)
 			m_networkManager->send(file.nextBlock(), sizeof(PacketData));
 	}
 	else
@@ -146,6 +154,23 @@ PacketHeader Server::packFileInfo(const FileGatherer::FileInfo * fi, short int f
 	m_pathTransform->cutPath(fi->m_pathId, fi->m_path, ph_fi.m_path);
 
 	return PacketHeader(PACKET_FILE_INFO, &ph_fi, sizeof(PacketHeader_FileInfo));
+}
+
+void Server::commitRollBack()
+{
+	if (m_proxyRollBackVector.size() > 0)
+	{
+		cout << "Rolling back changes..." << flush;
+
+		for (FIProxyPtrVector::interator proxyIt = m_proxyRollBackVector.start();
+			 proxyIt != m_proxyRollBackVector.end();
+			 proxyIt++)
+		{
+			rollBack(*proxyIt);
+		}
+
+		cout << "done." << endl;
+	}
 }
 
 void Server::rollBack(const FileGatherer::FileInfoProxy * proxy)
