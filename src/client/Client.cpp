@@ -49,6 +49,8 @@ Client::Client(int argc, char ** argv) : AppInterface(argc, argv)
 
 Client::~Client()
 {
+	cout << "Synchronization finished, quitting..." << endl;
+
 	delete m_networkManager;
 	delete m_pathTransform;
 }
