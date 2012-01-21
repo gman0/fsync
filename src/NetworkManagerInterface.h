@@ -98,13 +98,6 @@ class NetworkManagerInterface
 				total += n;
 				bytesLeft -= n;
 			}
-			/*if (SDLNet_TCP_Send(socketDescriptor, data, len) < len)
-			{
-				string err = "SDLNet_TCP_Send: ";
-				err += SDLNet_GetError();
-				LogManager::getInstancePtr()->log(err, LogManager::L_ERROR);
-				throw FSException(err, __FILE__, __LINE__);
-			}*/
 
 			return true;
 		}
@@ -125,13 +118,6 @@ class NetworkManagerInterface
 				total += n;
 				bytesLeft -= n;
 			}
-			/*if (SDLNet_TCP_Recv(socketDescriptor, data, len) < len)
-			{
-				string err = "SDLNet_TCP_Recv: ";
-				err += SDLNet_GetError();
-				LogManager::getInstancePtr()->log(err, LogManager::L_ERROR);
-				throw FSException(err, __FILE__, __LINE__);
-			}*/
 		}
 };
 
