@@ -84,26 +84,54 @@ class NetworkManagerInterface
 
 		bool send(TCPsocket socketDescriptor, const void * data, int len) const
 		{
-			if (SDLNet_TCP_Send(socketDescriptor, data, len) < len)
+			int total = 0;
+			int bytesLeft = len;
+			int n;
+
+			while (total < len)
+			{
+				n = SDLNet_TCP_Send(socketDescriptor, ((unsigned char*)data + total), bytesLeft);
+
+				if (n == -1)
+					return false;
+
+				total += n;
+				bytesLeft -= n;
+			}
+			/*if (SDLNet_TCP_Send(socketDescriptor, data, len) < len)
 			{
 				string err = "SDLNet_TCP_Send: ";
 				err += SDLNet_GetError();
 				LogManager::getInstancePtr()->log(err, LogManager::L_ERROR);
 				throw FSException(err, __FILE__, __LINE__);
-			}
+			}*/
 
 			return true;
 		}
 
 		void recv(TCPsocket socketDescriptor, void * data, int len) const
 		{
-			if (SDLNet_TCP_Recv(socketDescriptor, data, len) < len)
+			int total = 0;
+			int bytesLeft = len;
+			int n;
+
+			while (total < len)
+			{
+				n = SDLNet_TCP_Recv(socketDescriptor, ((unsigned char*)data + total), bytesLeft);
+
+				if (n == -1)
+					break;
+
+				total += n;
+				bytesLeft -= n;
+			}
+			/*if (SDLNet_TCP_Recv(socketDescriptor, data, len) < len)
 			{
 				string err = "SDLNet_TCP_Recv: ";
 				err += SDLNet_GetError();
 				LogManager::getInstancePtr()->log(err, LogManager::L_ERROR);
 				throw FSException(err, __FILE__, __LINE__);
-			}
+			}*/
 		}
 };
 
