@@ -30,14 +30,17 @@ void NetworkManager::closeConnection()
 {
 	if (m_clientSocketDescriptor)
 		SDLNet_TCP_Close(m_clientSocketDescriptor);
-	
+
 	SDLNet_TCP_Close(m_serverSocketDescriptor);
 }
 
 void NetworkManager::closeClientConnection()
 {
 	if (m_clientSocketDescriptor)
+	{
 		SDLNet_TCP_Close(m_clientSocketDescriptor);
+		m_clientSocketDescriptor = 0;
+	}
 }
 
 IPaddress * NetworkManager::getClientAddress()
