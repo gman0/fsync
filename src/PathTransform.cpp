@@ -76,7 +76,7 @@ bool PathTransform::checkPathAndLog(const path & p, PathId pathId)
 
 void PathTransform::cutPath(PathId pathId, const char * pth, char * outPath)
 {
-	path p = getPath(pathId);;
+	path p = getPath(pathId);
 	strcpy(outPath, (pth + strlen(p.c_str()) + 1)); // +1 because of the directory separator
 }
 

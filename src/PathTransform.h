@@ -43,7 +43,7 @@ class PathTransform
 		PathId getPathId(const boost::filesystem::path & path);
 
 		/*
-		 * This is only a helper method and checks only wether the length of the path
+		 * This is only a helper method and checks only wether the length (string) of the path
 		 * is bigger than 0. Also bear in mind that this method also logs an error
 		 * message if the string is empty, therefore LogManager needs to be initialized
 		 * before using this method.
