@@ -149,7 +149,11 @@ PacketHeader Server::packFileInfo(const FileGatherer::FileInfo * fi, short int f
 
 	ph_fi.m_pathId = fi->m_pathId;
 	ph_fi.m_action = (PacketHeader_FileInfo::ACTION)m_fileGatherer->getAction(flags);
-	ph_fi.m_size   = file_size(path(fi->m_path));
+
+	if (ph_fi.m_action != PacketHeader_FileInfo::A_DELETE)
+		ph_fi.m_size = file_size(path(fi->m_path));
+	else
+		ph_fi.m_size = 0; // We can't use file_size on a deleted file
 
 	m_pathTransform->cutPath(fi->m_pathId, fi->m_path, ph_fi.m_path);
 
@@ -162,7 +166,7 @@ void Server::commitRollBack()
 	{
 		cout << "Rolling back changes..." << flush;
 
-		for (FIProxyPtrVector::interator proxyIt = m_proxyRollBackVector.start();
+		for (FileGatherer::FIProxyPtrVector::iterator proxyIt = m_proxyRollBackVector.begin();
 			 proxyIt != m_proxyRollBackVector.end();
 			 proxyIt++)
 		{
