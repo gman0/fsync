@@ -391,13 +391,11 @@ void FileGatherer::insertIntoHashTree(FileGatherer::FileInfoProxy * proxy, short
 
 void FileGatherer::readFromDb()
 {
+	/*
+	 * If database doesn't exist, we'll create it later.
+	 */
 	if (!exists(m_fileDbPath))
-	{
-		string errMsg = "File database file \"";
-		errMsg += m_fileDbPath.string() + "\" not found";
-		LogManager::getInstancePtr()->log(errMsg, LogManager::L_ERROR);
-		throw FSException(errMsg, __FILE__, __LINE__);
-	}
+		return;
 
 	m_dbFileIStream->open(m_fileDbPath.c_str());
 
