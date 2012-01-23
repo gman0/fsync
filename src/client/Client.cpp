@@ -85,7 +85,7 @@ void Client::fileTransfer()
 
 		if (ph.m_type == PACKET_NEXT || ph.m_type == PACKET_SKIP)
 			continue;
-		else if (ph.m_type == PACKET_RESPONE_FREE_SPACE)
+		else if (ph.m_type == PACKET_RESPONE_FREE_SPACE_A_NEW)
 			handleNew(&ph_fi);
 	}
 }
@@ -107,12 +107,10 @@ PacketHeader Client::prepareFileTransfer(PacketHeader_FileInfo * ph_fi)
 
 				if (m_pathTransform->checkPathAndLog(p, ph_fi->m_pathId))
 				{
-					ph.m_type = PACKET_RESPONE_FREE_SPACE;
-
 					space_info s = space(m_pathTransform->getPath(ph_fi->m_pathId));
 
 					bool hasFreeSpace = (s.available - ph_fi->m_size > 0);
-					ph = packToHeader<bool>(&hasFreeSpace, PACKET_RESPONE_FREE_SPACE);
+					ph = packToHeader<bool>(&hasFreeSpace, PACKET_RESPONE_FREE_SPACE_A_NEW);
 				}
 				else
 					ph.m_type = PACKET_SKIP;
@@ -120,12 +118,24 @@ PacketHeader Client::prepareFileTransfer(PacketHeader_FileInfo * ph_fi)
 				break;
 
 			case PacketHeader_FileInfo::A_CHANGE:
-				// TODO: implement this
-				/*
-				 * add free space check
-				 * 
-				 * (free_space - file_size) + changedFile_size > 0
-				 */
+			{
+				path p = m_pathTransform->getPath(ph_fi->m_pathId);
+				path filePath = p / ph_fi->m_path;
+
+				space_info s = space(p);
+				bool hasFreeSpace;
+
+				if (!exists(filePath))
+				{
+					hasFreeSpace = (s.available - ph_fi->m_size > 0);
+					ph = packToHeader<bool>(&hasFreeSpace, PACKET_RESPONE_FREE_SPACE_A_NEW);
+				}
+				else
+				{
+					hasFreeSpace = (s.available - file_size(filePath) + ph_fi->m_size > 0);
+					ph = packToHeader<bool>(&hasFreeSpace, PACKET_RESPONE_FREE_SPACE_A_CHANGED);
+				}
+			}
 				break;
 
 			case PacketHeader_FileInfo::A_DELETE:
@@ -159,8 +169,13 @@ void Client::deleteFile(path p)
 
 void Client::handleNew(const PacketHeader_FileInfo * ph_fi)
 {
-	path p = m_pathTransform->glueCutPath(ph_fi->m_pathId, ph_fi->m_path);
-	ProcessFile_store file(p.c_str(), ph_fi->m_size);
+	path filePath = m_pathTransform->glueCutPath(ph_fi->m_pathId, ph_fi->m_path);
+	path parentPath = filePath.parent_path();
+
+	if (!exists(parentPath))
+		create_directories(parentPath);
+
+	ProcessFile_store file(filePath.c_str(), ph_fi->m_size);
 
 	unsigned long blocksCount = ProcessFile::getBlocksCount(ph_fi->m_size);
 
