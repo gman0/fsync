@@ -57,7 +57,7 @@ Server::Server(int argc, char ** argv) : AppInterface(argc, argv)
 		cout << "Synchronization finished successfuly." << endl;
 	else
 		cout << "There was an error during synchronization." << endl;
-	
+
 	if (m_proxyVector.size() > 0)
 	{
 		commitRollBack();
@@ -100,8 +100,8 @@ void Server::transferFiles()
 	{
 		PacketHeader ph = prepareFileTransfer(*proxyIt);
 
-		if (ph.m_type == PACKET_RESPONE_FREE_SPACE)
-			handleNew(unpackFromHeader<bool>(&ph, PACKET_RESPONE_FREE_SPACE), *proxyIt);
+		if (ph.m_type == PACKET_RESPONE_FREE_SPACE_A_NEW)
+			handleNew(unpackFromHeader<bool>(&ph, PACKET_RESPONE_FREE_SPACE_A_NEW), *proxyIt);
 	}
 }
 
