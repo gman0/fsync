@@ -38,7 +38,18 @@ enum PACKET_TYPE_ID
 	PACKET_CHUNK,
 
 	PACKET_REQUEST_FREE_SPACE,
-	PACKET_RESPONE_FREE_SPACE,
+
+	/*
+	 * Respone for server's request for free space.
+	 * Also, we want the whole file.
+	 */
+	PACKET_RESPONE_FREE_SPACE_A_NEW,
+
+	/*
+	 * Respone for server's request for free space.
+	 * We want the server to send us PACKET_CHUNK_INFOs
+	 */
+	PACKET_RESPONE_FREE_SPACE_A_CHANGED,
 
 	PACKET_NEXT,    // client's done, continue
 	PACKET_SKIP,    // there was an error, but continue anyway
