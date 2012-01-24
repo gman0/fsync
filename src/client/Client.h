@@ -44,10 +44,30 @@ class Client : public AppInterface
 		void getServer(const std::string & host);
 		void fileTransfer();
 
-		PacketHeader prepareFileTransfer(PacketHeader_FileInfo * ph_fi);
-		void deleteFile(boost::filesystem::path path);
+		/*
+		 * We will create ph_result and it shall be sent to server.
+		 * It also tells us what to do next:
+		 * Wether there was an error and continue to another "object"
+		 * or handle new/change actions. We don't need a handler for
+		 * delete action because there's no need to inform the server
+		 * that we deleted the file - server doesn't care about this
+		 * and we will delete the file inside this method (well, not
+		 * inside but using deleteFile method).
+		 *
+		 * ph_fi_out is the actual PacketHeader_FileInfo that we
+		 * recieved from server (also note that the recieving is done
+		 * inside this method) and we will use it later in the handling
+		 * phase.
+		 *
+		 * This method returns bool to see if we can actually
+		 * continue or just skip because of an error (for example we
+		 * ran out of disk space and cannot recieve the file).
+		 */
+		bool prepareFileTransfer(PacketHeader * ph_result, PacketHeader_FileInfo * ph_fi_out);
 
 		void handleNew(const PacketHeader_FileInfo * ph_fi);
+		void handleChange(const PacketHeader_FileInfo * ph_fi);
+		void deleteFile(boost::filesystem::path path);
 };
 
 #endif // CLIENT_H

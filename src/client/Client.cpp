@@ -74,82 +74,98 @@ void Client::fileTransfer()
 	m_networkManager->recv(&ph_objectsCount, sizeof(PacketHeader));
 
 	size_t objectsCount = unpackFromHeader<size_t>(&ph_objectsCount, PACKET_OBJECT_COUNT);
-	cout << "Recieving " << objectsCount << " objects:" << endl;
+	cout << "Recieving " << objectsCount << " object(s):" << endl;
 
 	for (size_t i = 0; i < objectsCount; i++)
 	{
 		PacketHeader_FileInfo ph_fi;
-		PacketHeader ph = prepareFileTransfer(&ph_fi);
+		PacketHeader ph;
 
+		bool canProceed = prepareFileTransfer(&ph, &ph_fi);
 		m_networkManager->send(&ph, sizeof(PacketHeader));
 
-		if (ph.m_type == PACKET_NEXT || ph.m_type == PACKET_SKIP)
-			continue;
-		else if (ph.m_type == PACKET_RESPONE_FREE_SPACE_A_NEW)
-			handleNew(&ph_fi);
+		if (canProceed)
+		{
+			if (ph.m_type == PACKET_NEXT || ph.m_type == PACKET_SKIP)
+				continue;
+			else if (ph.m_type == PACKET_RESPONE_FREE_SPACE_A_NEW)
+				handleNew(&ph_fi);
+			else if (ph.m_type == PACKET_RESPONE_FREE_SPACE_A_CHANGE)
+				handleChange(&ph_fi);
+		}
 	}
 }
 
-PacketHeader Client::prepareFileTransfer(PacketHeader_FileInfo * ph_fi)
+bool Client::prepareFileTransfer(PacketHeader * ph_result, PacketHeader_FileInfo * ph_fi_out)
 {
-	PacketHeader ph;
-	m_networkManager->recv(&ph, sizeof(PacketHeader));
+	m_networkManager->recv(ph_result, sizeof(PacketHeader));
+	bool canProceed = false;
 
-	if (ph.m_type == PACKET_FILE_INFO)
+	if (ph_result->m_type == PACKET_FILE_INFO)
 	{
-		*ph_fi = *(PacketHeader_FileInfo*)ph.m_buffer;
+		*ph_fi_out = *(PacketHeader_FileInfo*)ph_result->m_buffer;
 
-		switch (ph_fi->m_action)
+		switch (ph_fi_out->m_action)
 		{
 			case PacketHeader_FileInfo::A_ADD:
 			{
-				path p = m_pathTransform->getPath(ph_fi->m_pathId);
+				path p = m_pathTransform->getPath(ph_fi_out->m_pathId);
 
-				if (m_pathTransform->checkPathAndLog(p, ph_fi->m_pathId))
+				if (m_pathTransform->checkPathAndLog(p, ph_fi_out->m_pathId))
 				{
-					space_info s = space(m_pathTransform->getPath(ph_fi->m_pathId));
+					space_info s = space(m_pathTransform->getPath(ph_fi_out->m_pathId));
 
-					bool hasFreeSpace = (s.available - ph_fi->m_size > 0);
-					ph = packToHeader<bool>(&hasFreeSpace, PACKET_RESPONE_FREE_SPACE_A_NEW);
+					bool hasFreeSpace = (s.available - ph_fi_out->m_size > 0);
+					*ph_result = packToHeader<bool>(&hasFreeSpace, PACKET_RESPONE_FREE_SPACE_A_NEW);
+
+					if (hasFreeSpace)
+						canProceed = true;
 				}
 				else
-					ph.m_type = PACKET_SKIP;
+					ph_result->m_type = PACKET_SKIP;
 			}
 				break;
 
 			case PacketHeader_FileInfo::A_CHANGE:
 			{
-				path p = m_pathTransform->getPath(ph_fi->m_pathId);
-				path filePath = p / ph_fi->m_path;
+				path p = m_pathTransform->getPath(ph_fi_out->m_pathId);
+				path filePath = p / ph_fi_out->m_path;
 
 				space_info s = space(p);
 				bool hasFreeSpace;
 
+				/*
+				 * If the file doesn't exist we can't apply the changes to it
+				 * so we'll just send a request for the whole file.
+				 */
 				if (!exists(filePath))
 				{
-					hasFreeSpace = (s.available - ph_fi->m_size > 0);
-					ph = packToHeader<bool>(&hasFreeSpace, PACKET_RESPONE_FREE_SPACE_A_NEW);
+					hasFreeSpace = (s.available - ph_fi_out->m_size > 0);
+					*ph_result = packToHeader<bool>(&hasFreeSpace, PACKET_RESPONE_FREE_SPACE_A_NEW);
 				}
 				else
 				{
-					hasFreeSpace = (s.available - file_size(filePath) + ph_fi->m_size > 0);
-					ph = packToHeader<bool>(&hasFreeSpace, PACKET_RESPONE_FREE_SPACE_A_CHANGED);
+					hasFreeSpace = (s.available - file_size(filePath) + ph_fi_out->m_size > 0);
+					*ph_result = packToHeader<bool>(&hasFreeSpace, PACKET_RESPONE_FREE_SPACE_A_CHANGE);
 				}
+
+				if (hasFreeSpace)
+					canProceed = true;
 			}
 				break;
 
 			case PacketHeader_FileInfo::A_DELETE:
-				deleteFile(m_pathTransform->glueCutPath(ph_fi->m_pathId, ph_fi->m_path));
+				deleteFile(m_pathTransform->glueCutPath(ph_fi_out->m_pathId, ph_fi_out->m_path));
 				break;
 			default:
-				ph.m_type = PACKET_NEXT;
+				ph_result->m_type = PACKET_NEXT;
 				break;
 		}
 	}
 	else
-		ph.m_type = PACKET_NEXT;
+		ph_result->m_type = PACKET_NEXT;
 
-	return ph;
+	return canProceed;
 }
 
 void Client::deleteFile(path p)
@@ -186,4 +202,9 @@ void Client::handleNew(const PacketHeader_FileInfo * ph_fi)
 		m_networkManager->recv(&data, sizeof(PacketData));
 		file.feedNextBlock(&data);
 	}
+}
+
+void Client::handleChange(const PacketHeader_FileInfo * ph_fi)
+{
+
 }
