@@ -49,7 +49,7 @@ enum PACKET_TYPE_ID
 	 * Respone for server's request for free space.
 	 * We want the server to send us PACKET_CHUNK_INFOs
 	 */
-	PACKET_RESPONE_FREE_SPACE_A_CHANGED,
+	PACKET_RESPONE_FREE_SPACE_A_CHANGE,
 
 	PACKET_NEXT,    // client's done, continue
 	PACKET_SKIP,    // there was an error, but continue anyway
