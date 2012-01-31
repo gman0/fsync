@@ -193,7 +193,6 @@ void Server::recursiveChunkSearch(ProcessFile_load * file, offset_t endRange, of
 		{
 			if (file->zoomIn())
 			{
-				offset_t endRange = ProcessFile::getOffsetRange(file->getCurrentChunkInfo(), currentChunkInfo);
 				recursiveChunkSearch(file, ProcessFile::getOffsetRange(file->getCurrentChunkInfo(),
 									currentChunkInfo)); // currentChunkInfo now means previous chunk info...
 			}
