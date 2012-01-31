@@ -27,4 +27,6 @@
 
 #define PATH_LENGTH 340
 
+typedef unsigned long offset_t;
+
 #endif // DEFS_H
