@@ -11,6 +11,12 @@ ProcessFile_store::ProcessFile_store(const char * filePath, size_t size) : Proce
 	m_dataLen = size;
 }
 
+ProcessFile_store::ProcessFile_store(const char * filePath) : ProcessFile(m_file)
+{
+	m_file.open(filePath);
+	prepare();
+}
+
 ProcessFile_store::~ProcessFile_store()
 {
 	m_file.close();

@@ -12,6 +12,12 @@ class ProcessFile_store : public ProcessFile
 
 	public:
 		ProcessFile_store(const char * filePath, size_t size);
+
+		/*
+		 * This constructor assumes that the file exists and also
+		 * opens it both for reading and writing.
+		 */
+		ProcessFile_store(const char * filePath);
 		~ProcessFile_store();
 
 		void feedBlock(offset_t offset, const PacketData * data);
