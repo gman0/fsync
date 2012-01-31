@@ -25,6 +25,8 @@
 #include "FileGatherer.h"
 #include "Packet.h"
 
+class ProcessFile_load;
+
 class Server : public AppInterface
 {
 	private:
@@ -61,8 +63,9 @@ class Server : public AppInterface
 		void commitRollBack();
 
 		void handleNew(bool hasFreeSpace, FileGatherer::FileInfoProxy * proxy);
-		void handleChange();
-		void handleDelete();
+		void handleChange(bool hasFreeSpace, FileGatherer::FileInfoProxy * proxy);
+
+		void recursiveChunkSearch(ProcessFile_load * file, offset_t endRange, offset_t total = 0);
 };
 
 #endif // SERVER_H

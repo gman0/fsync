@@ -19,6 +19,7 @@
 
 #include "ProcessFile_load.h"
 #include "defs.h"
+#include "NetworkManager.h"
 
 using namespace std;
 

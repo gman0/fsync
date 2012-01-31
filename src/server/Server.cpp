@@ -102,6 +102,8 @@ void Server::transferFiles()
 
 		if (ph.m_type == PACKET_RESPONE_FREE_SPACE_A_NEW)
 			handleNew(unpackFromHeader<bool>(&ph, PACKET_RESPONE_FREE_SPACE_A_NEW), *proxyIt);
+		else if (ph.m_type == PACKET_RESPONE_FREE_SPACE_A_CHANGE)
+			handleChange(unpackFromHeader<bool>(&ph, PACKET_RESPONE_FREE_SPACE_A_CHANGE), *proxyIt);
 	}
 }
 
@@ -141,6 +143,76 @@ void Server::handleNew(bool hasFreeSpace, FileGatherer::FileInfoProxy * proxy)
 	}
 	else
 		addRollBack(proxy);
+}
+
+void Server::handleChange(bool hasFreeSpace, FileGatherer::FileInfoProxy * proxy)
+{
+	if (hasFreeSpace)
+	{
+		ProcessFile_load file(m_fileGatherer->getFileInfo(proxy).m_path);
+
+		// search for chunks and send them
+		recursiveChunkSearch(&file, file.getSize());
+
+		// we're done
+		PacketHeader ph_next;
+		ph_next.m_type = PACKET_NEXT;
+
+		m_networkManager->send(&ph_next, sizeof(PacketHeader));
+	}
+		addRollBack(proxy);
+}
+
+void Server::recursiveChunkSearch(ProcessFile_load * file, offset_t endRange, offset_t total)
+{
+	while (file->getGOffset() < endRange)
+	{
+		PacketHeader ph;
+
+		// send PacketHeader_ChunkInfo so that client knows what to look for
+		ProcessFile::ChunkInfo currentChunkInfo = file->getCurrentChunkInfo();
+		PacketHeader_ChunkInfo ph_ci;
+
+		ph_ci.m_chunkType = currentChunkInfo.first;
+		ph_ci.m_chunkId = currentChunkInfo.second;
+
+		ph = packToHeader<PacketHeader_ChunkInfo>(&ph_ci, PACKET_CHUNK_INFO);
+		m_networkManager->send(&ph, sizeof(PacketHeader));
+
+
+		// recieve the answer from client
+		m_networkManager->recv(&ph, sizeof(PacketHeader));
+		hash_t cl_ciHash = unpackFromHeader<hash_t>(&ph, PACKET_CHUNK_HASH); // client's chunk info hash
+
+		if (cl_ciHash == file->getHash())
+		{
+			file->setGOffset(file->getGOffset() + (int)file->getZoom());
+			continue;
+		}
+		else
+		{
+			if (file->zoomIn())
+			{
+				offset_t endRange = ProcessFile::getOffsetRange(file->getCurrentChunkInfo(), currentChunkInfo);
+				recursiveChunkSearch(file, ProcessFile::getOffsetRange(file->getCurrentChunkInfo(),
+									currentChunkInfo)); // currentChunkInfo now means previous chunk info...
+			}
+			else
+			{
+				// announce that we're going to send the whole chunk
+				offset_t offset = ProcessFile::getOffset(file->getCurrentChunkInfo());
+				PacketHeader announce_ph = packToHeader<offset_t>(&offset, PACKET_CHUNK);
+				m_networkManager->send(&announce_ph, sizeof(PacketHeader));
+
+				// send the actual chunk
+				PacketData * pd = file->getBlock(file->getGOffset());
+				m_networkManager->send(pd, sizeof(PacketData));
+			}
+			file->setGOffset(file->getGOffset() + (int)file->getZoom());
+		}
+	}
+
+	file->zoomOut();
 }
 
 PacketHeader Server::packFileInfo(const FileGatherer::FileInfo * fi, short int flags)

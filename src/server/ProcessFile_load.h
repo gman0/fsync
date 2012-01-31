@@ -24,6 +24,8 @@
 #include "ProcessFile.h"
 #include "Packet.h"
 
+class NetworkManager;
+
 class ProcessFile_load : public ProcessFile
 {
 	private:
