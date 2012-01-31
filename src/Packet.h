@@ -24,6 +24,8 @@
 #include <boost/filesystem.hpp>
 #include <cstring>
 #include "defs.h"
+#include "hash.h"
+#include "ProcessFile.h"
 
 enum PACKET_TYPE_ID
 {
@@ -34,6 +36,7 @@ enum PACKET_TYPE_ID
 	PACKET_FILE_INFO,
 	PACKET_FILE,
 
+	PACKET_CHUNK_HASH,
 	PACKET_CHUNK_INFO,
 	PACKET_CHUNK,
 
@@ -51,7 +54,7 @@ enum PACKET_TYPE_ID
 	 */
 	PACKET_RESPONE_FREE_SPACE_A_CHANGE,
 
-	PACKET_NEXT,    // client's done, continue
+	PACKET_NEXT,    // the task is done, continue
 	PACKET_SKIP,    // there was an error, but continue anyway
 	PACKET_FINISHED // everything went better than expected :)
 };
@@ -146,15 +149,12 @@ struct PacketHeader_FileInfo
 	}
 };
 
-struct PacketHeader_fileChunk : public PacketHeader_Interface
+struct PacketHeader_ChunkInfo
 {
+	ProcessFile::CHUNK_TYPE m_chunkType;
 	int m_chunkId;
-};
 
-struct PacketHeader_chunkInfo : public PacketHeader_Interface
-{
-	int m_chunkId;
-	char m_hash[HASH_LENGTH];
+	PacketHeader_ChunkInfo() : m_chunkType(ProcessFile::CHUNK_NONE), m_chunkId(0) {}
 };
 
 #endif // PACKET_H
