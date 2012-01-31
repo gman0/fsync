@@ -57,13 +57,13 @@ size_t ProcessFile::getSize() const
 	return m_dataLen;
 }
 
-size_t ProcessFile::getBlockSize(const ProcessFile::offset_t offset)
+size_t ProcessFile::getBlockSize(const offset_t offset) const
 {
 	size_t len = BLOCK_SIZE;
 
 	if (offset + len >= m_dataLen)
 		len = m_dataLen - offset;
-	
+
 	return len;
 }
 
@@ -87,7 +87,7 @@ hash_t ProcessFile::getHash()
 	return calculateHash(buf, m_chunkInfo.first);
 }
 
-ProcessFile::offset_t ProcessFile::getChunkOffset(const ProcessFile::ChunkInfo & cInfo) const
+offset_t ProcessFile::getChunkOffset(const ProcessFile::ChunkInfo & cInfo) const
 {
 	size_t offset = cInfo.first * cInfo.second;
 
@@ -96,7 +96,7 @@ ProcessFile::offset_t ProcessFile::getChunkOffset(const ProcessFile::ChunkInfo &
 	return offset;
 }
 
-ProcessFile::offset_t ProcessFile::getChunkOffset() const
+offset_t ProcessFile::getChunkOffset() const
 {
 	return getChunkOffset(m_chunkInfo);
 }
@@ -116,19 +116,40 @@ void ProcessFile::normalizeChunkOffset(ProcessFile::ChunkInfo & cInfo)
 	normalizeChunkOffset();
 }
 
-size_t ProcessFile::getOffsetRange(const ProcessFile::ChunkInfo & start, const ProcessFile::ChunkInfo & end)
+offset_t ProcessFile::getOffsetRange(const ProcessFile::ChunkInfo & start,
+									const ProcessFile::ChunkInfo & end)
 {
-	return 0;
+	return (start.first * start.second + end.first * (end.second + 1));
 }
 
-ProcessFile::offset_t ProcessFile::getGOffset() const
+offset_t ProcessFile::getOffset(const ProcessFile::ChunkInfo & ci)
+{
+	return (ci.first * ci.second);
+}
+
+ProcessFile::ChunkInfo ProcessFile::getCurrentChunkInfo() const
+{
+	return m_chunkInfo;
+}
+
+offset_t ProcessFile::getGOffset() const
 {
 	return m_file.tellg();
 }
 
-ProcessFile::offset_t ProcessFile::getPOffset() const
+offset_t ProcessFile::getPOffset() const
 {
 	return m_file.tellp();
+}
+
+void ProcessFile::setGOffset(offset_t offset)
+{
+	m_file.seekg(offset);
+}
+
+void ProcessFile::setPOffset(offset_t offset)
+{
+	m_file.seekp(offset);
 }
 
 void ProcessFile::setZoom(const ProcessFile::CHUNK_TYPE chunkType)

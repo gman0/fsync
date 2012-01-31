@@ -41,8 +41,6 @@ class ProcessFile
 		// CHUNK_TYPE - chunkId pair
 		typedef std::pair<CHUNK_TYPE, int> ChunkInfo;
 
-		typedef unsigned long offset_t;
-
 	protected:
 		std::fstream & m_file;
 		size_t m_dataLen;
@@ -57,7 +55,7 @@ class ProcessFile
 		void prepare();
 
 		size_t getSize() const;
-		size_t getBlockSize(offset_t offset);
+		size_t getBlockSize(offset_t offset) const;
 		unsigned int getBlocksCount() const;
 
 		/*
@@ -75,7 +73,10 @@ class ProcessFile
 		 */
 		void normalizeChunkOffset(ChunkInfo & cInfo);
 
-		size_t getOffsetRange(const ChunkInfo & start, const ChunkInfo & end);
+		static offset_t getOffsetRange(const ChunkInfo & start, const ChunkInfo & end);
+		static offset_t getOffset(const ChunkInfo & ci);
+
+		ChunkInfo getCurrentChunkInfo() const;
 
 		/*
 		 * Gets GET offset of m_file (tellg())
@@ -86,6 +87,9 @@ class ProcessFile
 		 * Gets PUT offset of m_file (tellp())
 		 */
 		offset_t getPOffset() const;
+
+		void setGOffset(offset_t offset);
+		void setPOffset(offset_t offset);
 
 		void setZoom(const CHUNK_TYPE chunkType);
 		CHUNK_TYPE getZoom() const;
