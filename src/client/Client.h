@@ -26,6 +26,9 @@
 #include "NetworkManager.h"
 #include "PathTransform.h"
 #include "Packet.h"
+#include "defs.h"
+
+class ProcessFile_store;
 
 class Client : public AppInterface
 {
@@ -68,6 +71,16 @@ class Client : public AppInterface
 		void handleNew(const PacketHeader_FileInfo * ph_fi);
 		void handleChange(const PacketHeader_FileInfo * ph_fi);
 		void deleteFile(boost::filesystem::path path);
+
+		/*
+		 * Searches for chunks requested by server and sends it's hash.
+		 * If the hashes don't match, server sends the whole chunk and
+		 * this method rewrites the existing data in the file with the
+		 * recieved chunk.
+		 *
+		 * Returns true if we're finished, otherwise false.
+		 */
+		bool chunkSearchAndStore(ProcessFile_store * file);
 };
 
 #endif // CLIENT_H

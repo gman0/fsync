@@ -206,5 +206,48 @@ void Client::handleNew(const PacketHeader_FileInfo * ph_fi)
 
 void Client::handleChange(const PacketHeader_FileInfo * ph_fi)
 {
+	path filePath = m_pathTransform->glueCutPath(ph_fi->m_pathId, ph_fi->m_path);
+	resize_file(filePath, ph_fi->m_size);
 
+	ProcessFile_store file(filePath.c_str());
+
+	while (!chunkSearchAndStore(&file))
+		continue;
+}
+
+bool Client::chunkSearchAndStore(ProcessFile_store * file)
+{
+	PacketHeader ph;
+	m_networkManager->recv(&ph, sizeof(PacketHeader));
+
+	if (ph.m_type == PACKET_NEXT)
+		return true;
+	else if (ph.m_type == PACKET_CHUNK_INFO)
+	{
+		PacketHeader_ChunkInfo ph_ci = unpackFromHeader<PacketHeader_ChunkInfo>(&ph, PACKET_CHUNK_INFO);
+		ProcessFile::ChunkInfo ci;
+
+		ci.first = ph_ci.m_chunkType;
+		ci.second = ph_ci.m_chunkId;
+
+		offset_t offset = ProcessFile::getOffset(ci);
+
+		file->setGOffset(offset);
+
+		// send chunk's hash to server
+		hash_t hash = file->getHash();
+		ph = packToHeader<hash_t>(&hash, PACKET_CHUNK_HASH);
+		m_networkManager->send(&ph, sizeof(PacketHeader));
+	}
+	else if (ph.m_type == PACKET_CHUNK)
+	{
+		offset_t offset = unpackFromHeader<offset_t>(&ph, PACKET_CHUNK);
+
+		PacketData chunk;
+		m_networkManager->recv(&chunk, sizeof(PacketData));
+
+		file->feedBlock(offset, &chunk);
+	}
+
+	return false;
 }
