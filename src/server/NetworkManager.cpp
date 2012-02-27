@@ -17,61 +17,86 @@
     along with fsync.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <cstdio>
+#include <iostream>
+#include <string>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include "NetworkManager.h"
+#include "LogManager.h"
+#include "FSException.h"
+using namespace std;
+NetworkManager::NetworkManager(int port) :
+	NetworkManagerInterface(0, port),
+	m_clientSocketDescriptor(0)
+{
+	string errorMsg;
+
+	// enable address reuse so we don't get "Address already in use." error
+	int enableReuseAddr = 1;
+
+	if (setsockopt(m_serverSocketDescriptor, SOL_SOCKET, SO_REUSEADDR, &enableReuseAddr, sizeof(int)) == -1)
+	{
+		errorMsg = "Cannot set flags to socket: ";
+		errorMsg += strerror(errno);
+		LogManager::getInstancePtr()->log(errorMsg, LogManager::L_ERROR);
+		throw FSException(errorMsg);
+	}
+
+	if (bind(m_serverSocketDescriptor, m_serverInfo->ai_addr, m_serverInfo->ai_addrlen) == -1)
+	{
+		close(m_serverSocketDescriptor);
+
+		errorMsg = "Cannot bind to socket: ";
+		errorMsg += strerror(errno);
+		LogManager::getInstancePtr()->log(errorMsg, LogManager::L_ERROR);
+		throw FSException(errorMsg);
+	}
+}
+
+void NetworkManager::listen()
+{
+	if (::listen(m_serverSocketDescriptor, 1) == -1)
+	{
+		string errorMsg = "Cannot listen() on socket: ";
+		errorMsg += strerror(errno);
+		LogManager::getInstancePtr()->log(errorMsg, LogManager::L_ERROR);
+		throw FSException(errorMsg);
+	}
+}
 
 bool NetworkManager::acceptConnection()
 {
-	m_clientSocketDescriptor = SDLNet_TCP_Accept(m_serverSocketDescriptor);
-	return (m_clientSocketDescriptor) ? true : false;
+	socklen_t cliLen = sizeof m_clientAddrInfo;
+	m_clientSocketDescriptor = accept(m_serverSocketDescriptor, (sockaddr*)&m_clientAddrInfo, &cliLen);
+
+	return (m_clientSocketDescriptor > 0) ? true : false;
 }
 
 void NetworkManager::closeConnection()
 {
-	if (m_clientSocketDescriptor)
-		SDLNet_TCP_Close(m_clientSocketDescriptor);
-
-	SDLNet_TCP_Close(m_serverSocketDescriptor);
+	close(m_clientSocketDescriptor);
+	close(m_serverSocketDescriptor);
 }
 
-void NetworkManager::closeClientConnection()
+void NetworkManager::getClientAddress(char * out, socklen_t size)
 {
-	if (m_clientSocketDescriptor)
-	{
-		SDLNet_TCP_Close(m_clientSocketDescriptor);
-		m_clientSocketDescriptor = 0;
-	}
+	inet_ntop(m_clientAddrInfo.ss_family, getInAddr((sockaddr*)&m_clientAddrInfo), out, size);
 }
 
-IPaddress * NetworkManager::getClientAddress()
+int NetworkManager::getPort()
 {
-	m_clientIP = SDLNet_TCP_GetPeerAddress(m_clientSocketDescriptor);
-
-	if (!m_clientIP)
-	{
-		string err = "SDLNet_TCP_GetPeerAddress: ";
-		err += SDLNet_GetError();
-		LogManager::getInstancePtr()->log(err, LogManager::L_WARNING);
-	}
-
-	return m_clientIP;
+	return ntohs(((sockaddr_in*)&m_clientAddrInfo)->sin_port);
 }
 
-void NetworkManager::getClientIPAddress(char * out)
-{
-	if (m_clientIP)
-	{
-		uint32_t ipAddress = SDL_SwapBE32(m_clientIP->host);
-		sprintf(out, "%d.%d.%d.%d", ipAddress >> 24, (ipAddress >> 16) & 0xff, (ipAddress >> 8) & 0xff, ipAddress & 0xff);
-	}
-}
-
-bool NetworkManager::send(const void * data, int len) const
+int NetworkManager::send(const void * data, int len)
 {
 	return NetworkManagerInterface::send(m_clientSocketDescriptor, data, len);
 }
 
-void NetworkManager::recv(void * data, int len) const
+int NetworkManager::recv(void * data, int len)
 {
-	NetworkManagerInterface::recv(m_clientSocketDescriptor, data, len);
+	return NetworkManagerInterface::recv(m_clientSocketDescriptor, data, len);
 }

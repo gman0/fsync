@@ -20,32 +20,30 @@
 #ifndef NETWORK_MANAGER_H
 #define NETWORK_MANAGER_H
 
-#include <SDL/SDL_net.h>
 #include "NetworkManagerInterface.h"
 
 class NetworkManager : public NetworkManagerInterface
 {
 	private:
-		TCPsocket m_clientSocketDescriptor;
-		IPaddress * m_clientIP;
+		int m_clientSocketDescriptor;
+		sockaddr_storage m_clientAddrInfo;
 
 	public:
-		NetworkManager(int port) : NetworkManagerInterface(0, port), m_clientSocketDescriptor(0), m_clientIP(0)
-		{}
+		NetworkManager(int port);
 
+		void listen();
 		bool acceptConnection();
 		void closeConnection();
-		void closeClientConnection();
-		IPaddress * getClientAddress();
 
 		/*
-		 * out should point to an array of chars of at least 16 items
-		 * (15 for the actual IPv4 address and the last one for \0)
+		 * out should point to an array of chars of at least INET_ADDRSTRLEN
+		 * for IPv4 address or INET6_ADDRSTRLEN for IPv6 address.
 		 */
-		void getClientIPAddress(char * out);
+		void getClientAddress(char * out, socklen_t size);
+		int getPort();
 
-		bool send(const void * data, int len) const;
-		void recv(void * data, int len) const;
+		int send(const void * data, int len);
+		int recv(void * data, int len);
 };
 
 #endif // NETWORK_MANAGER_H
