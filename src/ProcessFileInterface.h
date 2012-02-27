@@ -26,7 +26,7 @@
 #include "defs.h"
 #include "hash.h"
 
-class ProcessFile
+class ProcessFileInterface
 {
 	public:
 		enum CHUNK_TYPE
@@ -38,18 +38,17 @@ class ProcessFile
 			CHUNK		 =  262144  // 256KB
 		};
 
-		// CHUNK_TYPE - chunkId pair
-		typedef std::pair<CHUNK_TYPE, int> ChunkInfo;
+		typedef std::pair<CHUNK_TYPE, offset_t> ChunkInfo;
 
 	protected:
 		std::fstream & m_file;
 		size_t m_dataLen;
 		unsigned int m_blocksCount;
-		ChunkInfo m_chunkInfo;
+		CHUNK_TYPE m_chunkType;
 
 	public:
-		ProcessFile(std::fstream & file) : m_file(file), m_dataLen(0), m_blocksCount(0),
-											m_chunkInfo(CHUNK_NONE, 0)
+		ProcessFileInterface(std::fstream & file) : m_file(file), m_dataLen(0), m_blocksCount(0),
+													m_chunkType(CHUNK_NONE)
 		{}
 
 		void prepare();
@@ -61,66 +60,28 @@ class ProcessFile
 		/*
 		 * Calculates the number of blocks for size
 		 */
-		static unsigned long getBlocksCount(const size_t size);
+		static unsigned int getBlocksCount(const size_t size);
+	
+		offset_t getOffsetRange(const ChunkInfo & ci);
 
-		/*
-		 * Sets the CHUNK_TYPE in m_chunkInfo to CHUNK and calculates it's chunk id
-		 */
-		void normalizeChunkOffset();
+		ChunkInfo getCurrentChunkInfo();
 
-		/*
-		 * Normalizes the offset and saves the previous state into cInfo
-		 */
-		void normalizeChunkOffset(ChunkInfo & cInfo);
-
-		static offset_t getOffsetRange(const ChunkInfo & start, const ChunkInfo & end);
-		static offset_t getOffset(const ChunkInfo & ci);
-
-		ChunkInfo getCurrentChunkInfo() const;
-
-		/*
-		 * Gets GET offset of m_file (tellg())
-		 */
-		offset_t getGOffset() const;
-
-		/*
-		 * Gets PUT offset of m_file (tellp())
-		 */
-		offset_t getPOffset() const;
-
-		void setGOffset(offset_t offset);
-		void setPOffset(offset_t offset);
+		virtual void setOffset(offset_t offset) = 0;
+		virtual offset_t getOffset() = 0;
 
 		void setZoom(const CHUNK_TYPE chunkType);
 		CHUNK_TYPE getZoom() const;
 		bool zoomIn();
 		bool zoomOut();
 
-		hash_t getHash();
-		hash_t getHash(int chunkId);
+		hash_t getHash(const ChunkInfo & ci);
 
 
 	protected:
-		/*
-		 * Get offset for cInfo
-		 */
-		offset_t getChunkOffset(const ChunkInfo & cInfo) const;
-
-		/*
-		 * Get current offset (from m_chunkInfo)
-		 */
-		offset_t getChunkOffset() const;
 
 		void setPreferredChunkType();
 
 };
-
-
-/*
- * When sending data trough PacketData, no other chunk types will be accepted
- * simply because they won't fit into PacketData's buffer.
- */
-// #define BUFFER_TRESHOLD ProcessFile::CHUNK
 
 
 #endif // PROCESS_FILE_H
