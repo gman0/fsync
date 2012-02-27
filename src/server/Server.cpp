@@ -20,6 +20,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <string>
+#include <utility>
 #include "FSException.h"
 #include "Server.h"
 #include "FileGatherer.h"
@@ -40,7 +41,6 @@ Server::Server(int argc, char ** argv) : AppInterface(argc, argv)
 	m_proxyVector = m_fileGatherer->getChanges();
 
 	m_networkManager = new NetworkManager(m_config->getPort());
-	m_networkManager->openSocket();
 
 	getClient();
 
@@ -50,7 +50,6 @@ Server::Server(int argc, char ** argv) : AppInterface(argc, argv)
 	PacketHeader ph_final;
 	m_networkManager->recv(&ph_final, sizeof(PacketHeader));
 
-	m_networkManager->closeClientConnection();
 	m_networkManager->closeConnection();
 
 	if (ph_final.m_type == PACKET_FINISHED)
@@ -81,14 +80,15 @@ void Server::getClient()
 {
 	cout << "Waiting for client..." << endl;
 
+	m_networkManager->listen();
+
 	while (!m_networkManager->acceptConnection())
 		SDL_Delay(100);
 
-	IPaddress * ip = m_networkManager->getClientAddress();
-	char ipAddress[16];
-	m_networkManager->getClientIPAddress(ipAddress);
+	char address[INET_ADDRSTRLEN];
+	m_networkManager->getClientAddress(address, sizeof(address));
 
-	cout << "Connection established with " << ipAddress << ':' << ip->port << endl;
+	cout << "Connection established with " << address << ':' << m_networkManager->getPort() << endl;
 }
 
 void Server::transferFiles()
@@ -160,54 +160,49 @@ void Server::handleChange(bool hasFreeSpace, FileGatherer::FileInfoProxy * proxy
 
 		m_networkManager->send(&ph_next, sizeof(PacketHeader));
 	}
+	else
 		addRollBack(proxy);
 }
 
-void Server::recursiveChunkSearch(ProcessFile_load * file, offset_t endRange, offset_t total)
+void Server::recursiveChunkSearch(ProcessFile_load * file, offset_t endRange)
 {
-	while (file->getGOffset() < endRange)
+	while (file->getOffset() < endRange)
 	{
 		PacketHeader ph;
 
 		// send PacketHeader_ChunkInfo so that client knows what to look for
-		ProcessFile::ChunkInfo currentChunkInfo = file->getCurrentChunkInfo();
+		ProcessFileInterface::ChunkInfo ci = file->getCurrentChunkInfo();
 		PacketHeader_ChunkInfo ph_ci;
 
-		ph_ci.m_chunkType = currentChunkInfo.first;
-		ph_ci.m_chunkId = currentChunkInfo.second;
+		ph_ci.m_chunkType = ci.first;;
+		ph_ci.m_offset = ci.second;
 
 		ph = packToHeader<PacketHeader_ChunkInfo>(&ph_ci, PACKET_CHUNK_INFO);
 		m_networkManager->send(&ph, sizeof(PacketHeader));
-
 
 		// recieve the answer from client
 		m_networkManager->recv(&ph, sizeof(PacketHeader));
 		hash_t cl_ciHash = unpackFromHeader<hash_t>(&ph, PACKET_CHUNK_HASH); // client's chunk info hash
 
-		if (cl_ciHash == file->getHash())
+		if (cl_ciHash == file->getHash(ci))
 		{
-			file->setGOffset(file->getGOffset() + (int)file->getZoom());
+			file->setOffset(file->getOffset() + (int)file->getZoom());
 			continue;
 		}
 		else
 		{
 			if (file->zoomIn())
-			{
-				recursiveChunkSearch(file, ProcessFile::getOffsetRange(file->getCurrentChunkInfo(),
-									currentChunkInfo)); // currentChunkInfo now means previous chunk info...
-			}
+				recursiveChunkSearch(file, file->getOffsetRange(ci));
 			else
 			{
 				// announce that we're going to send the whole chunk
-				offset_t offset = ProcessFile::getOffset(file->getCurrentChunkInfo());
-				PacketHeader announce_ph = packToHeader<offset_t>(&offset, PACKET_CHUNK);
+				PacketHeader announce_ph = packToHeader<offset_t>(&ci.second, PACKET_CHUNK);
 				m_networkManager->send(&announce_ph, sizeof(PacketHeader));
 
 				// send the actual chunk
-				PacketData * pd = file->getBlock(file->getGOffset());
+				PacketData * pd = file->getBlock(ci.second);
 				m_networkManager->send(pd, sizeof(PacketData));
 			}
-			file->setGOffset(file->getGOffset() + (int)file->getZoom());
 		}
 	}
 

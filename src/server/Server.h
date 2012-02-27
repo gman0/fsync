@@ -65,7 +65,7 @@ class Server : public AppInterface
 		void handleNew(bool hasFreeSpace, FileGatherer::FileInfoProxy * proxy);
 		void handleChange(bool hasFreeSpace, FileGatherer::FileInfoProxy * proxy);
 
-		void recursiveChunkSearch(ProcessFile_load * file, offset_t endRange, offset_t total = 0);
+		void recursiveChunkSearch(ProcessFile_load * file, offset_t endRange);
 };
 
 #endif // SERVER_H
