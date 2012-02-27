@@ -20,7 +20,9 @@
 #ifndef NETWORK_MANAGER_H
 #define NETWORK_MANAGER_H
 
-#include <SDL/SDL_net.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 #include "NetworkManagerInterface.h"
 
 class NetworkManager : public NetworkManagerInterface
@@ -28,11 +30,11 @@ class NetworkManager : public NetworkManagerInterface
 	public:
 		NetworkManager(const char * ip, int port) : NetworkManagerInterface(ip, port) {}
 
-		bool tryOpenSocket();
+		bool connectToServer();
 		void closeConnection();
 
-		bool send(const void * data, int len) const;
-		void recv(void * data, int len) const;
+		int send(const void * data, int len);
+		int recv(void * data, int len);
 };
 
 #endif // NETWORK_MANAGER_H

@@ -17,25 +17,30 @@
     along with fsync.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <string>
+#include <cstring>
+#include <cerrno>
 #include "NetworkManager.h"
+#include "LogManager.h"
+#include "FSException.h"
 
-bool NetworkManager::tryOpenSocket()
+bool NetworkManager::connectToServer()
 {
-	return (m_serverSocketDescriptor = SDLNet_TCP_Open(&m_serverIP));
+	return (connect(m_serverSocketDescriptor, m_serverInfo->ai_addr, m_serverInfo->ai_addrlen) == 0) ?
+		true : false;
 }
 
 void NetworkManager::closeConnection()
 {
-	if (m_serverSocketDescriptor)
-		SDLNet_TCP_Close(m_serverSocketDescriptor);
+	close(m_serverSocketDescriptor);
 }
 
-bool NetworkManager::send(const void * data, int len) const
+int NetworkManager::send(const void * data, int len)
 {
 	return NetworkManagerInterface::send(m_serverSocketDescriptor, data, len);
 }
 
-void NetworkManager::recv(void * data, int len) const
+int NetworkManager::recv(void * data, int len)
 {
-	NetworkManagerInterface::recv(m_serverSocketDescriptor, data, len);
+	return NetworkManagerInterface::recv(m_serverSocketDescriptor, data, len);
 }
