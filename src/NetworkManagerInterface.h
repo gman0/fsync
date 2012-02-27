@@ -20,97 +20,78 @@
 #ifndef NETWORK_MANAGER_INTERFACE_H
 #define NETWORK_MANAGER_INTERFACE_H
 
-#include <SDL/SDL.h>
-#include <SDL/SDL_net.h>
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+#include <unistd.h>
+#include <cerrno>
+#include <cstring>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 #include "LogManager.h"
 #include "FSException.h"
 
 class NetworkManagerInterface
 {
 	protected:
-		TCPsocket m_serverSocketDescriptor;
-		IPaddress m_serverIP;
+		int m_serverSocketDescriptor;
+		addrinfo m_hints;
+		addrinfo * m_serverInfo;
 
 	public:
-		NetworkManagerInterface(const char * ip, int port) : m_serverSocketDescriptor(0)
+		NetworkManagerInterface(const char * ip, int port) : m_serverSocketDescriptor(0), m_serverInfo(0)
 		{
+			memset(&m_hints, 0, sizeof(addrinfo));
+
+			m_hints.ai_family = AF_INET;
+			m_hints.ai_socktype = SOCK_STREAM;
+			if (!ip) m_hints.ai_flags = AI_PASSIVE;
+
+			char portStr[6];
+			sprintf(portStr, "%d", port);
+			portStr[5] = '\0';
+
+			int rv = getaddrinfo(ip, portStr, &m_hints, &m_serverInfo);
 			string errorMsg;
 
-			if (SDL_Init(0) == -1)
+			if (rv != 0)
 			{
-				errorMsg = "SDL_Init: ";
-				errorMsg += SDL_GetError();
+				errorMsg = "Cannot get address info: ";
+				errorMsg += gai_strerror(rv);
 				LogManager::getInstancePtr()->log(errorMsg, LogManager::L_ERROR);
-				throw FSException(errorMsg, __FILE__, __LINE__);
+				throw FSException(errorMsg);
 			}
 
-			if (SDLNet_Init() == -1)
-			{
-				errorMsg = "SDLNet_Init: ";
-				errorMsg += SDLNet_GetError();
-				LogManager::getInstancePtr()->log(errorMsg, LogManager::L_ERROR);
-				throw FSException(errorMsg, __FILE__, __LINE__);
-			}
+			m_serverSocketDescriptor = socket(m_serverInfo->ai_family, m_serverInfo->ai_socktype, m_serverInfo->ai_protocol);
 
-			if (SDLNet_ResolveHost(&m_serverIP, ip, port) < 0)
+			if (m_serverSocketDescriptor < 0)
 			{
-				errorMsg = "SDLNet_ResolveHost: ";
-				errorMsg += SDLNet_GetError();
+				errorMsg = "Cannot open socket: ";
+				errorMsg += strerror(errno);
 				LogManager::getInstancePtr()->log(errorMsg, LogManager::L_ERROR);
-				throw FSException(errorMsg, __FILE__, __LINE__);
+				throw FSException(errorMsg);
 			}
 		}
 
 		virtual ~NetworkManagerInterface()
 		{
-			SDLNet_Quit();
-			SDL_Quit();
-		}
-
-		void openSocket()
-		{
-			m_serverSocketDescriptor = SDLNet_TCP_Open(&m_serverIP);
-
-			if (!m_serverSocketDescriptor)
-			{
-				string err = "SDLNet_TCP_Open: ";
-				err += SDLNet_GetError();
-				LogManager::getInstancePtr()->log(err, LogManager::L_ERROR);
-				throw FSException(err, __FILE__, __LINE__);
-			}
+			freeaddrinfo(m_serverInfo);
 		}
 
 		virtual void closeConnection() = 0;
 
-		bool send(TCPsocket socketDescriptor, const void * data, int len) const
+		int send(int socketDescriptor, const void * data, int len)
 		{
 			int total = 0;
 			int bytesLeft = len;
-			int n;
+			int n = 0;
 
 			while (total < len)
 			{
-				n = SDLNet_TCP_Send(socketDescriptor, ((unsigned char*)data + total), bytesLeft);
-
-				if (n == -1)
-					return false;
-
-				total += n;
-				bytesLeft -= n;
-			}
-
-			return true;
-		}
-
-		void recv(TCPsocket socketDescriptor, void * data, int len) const
-		{
-			int total = 0;
-			int bytesLeft = len;
-			int n;
-
-			while (total < len)
-			{
-				n = SDLNet_TCP_Recv(socketDescriptor, ((unsigned char*)data + total), bytesLeft);
+				n = ::send(socketDescriptor, (const unsigned char*)data + total, bytesLeft, 0);
 
 				if (n == -1)
 					break;
@@ -118,7 +99,40 @@ class NetworkManagerInterface
 				total += n;
 				bytesLeft -= n;
 			}
+
+			return total;
 		}
+
+		int recv(int socketDescriptor, void * data, int len)
+		{
+			int total = 0;
+			int bytesLeft = len;
+			int n = 0;
+
+			while (total < len)
+			{
+				n  = ::recv(socketDescriptor, (unsigned char*)data + total, bytesLeft, 0);
+
+				if (n == -1)
+					break;
+
+				total += n;
+				bytesLeft -= n;
+			}
+
+			return total;
+		}
+	
+	protected:
+
+		void * getInAddr(sockaddr * sa)
+		{
+			if (sa->sa_family == AF_INET)
+				return &(((sockaddr_in*)sa)->sin_addr);
+
+			return &(((sockaddr_in6*)sa)->sin6_addr);
+		}
+
 };
 
 #endif // NETWORK_MANAGER_INTERFACE_H
