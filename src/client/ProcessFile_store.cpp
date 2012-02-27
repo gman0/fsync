@@ -1,9 +1,8 @@
 #include "ProcessFile_store.h"
-#include <iostream>
 
 using namespace std;
 
-ProcessFile_store::ProcessFile_store(const char * filePath, size_t size) : ProcessFile(m_file)
+ProcessFile_store::ProcessFile_store(const char * filePath, size_t size) : ProcessFileInterface(m_file)
 {
 	m_file.open(filePath, ios::out);
 	prepare();
@@ -11,7 +10,7 @@ ProcessFile_store::ProcessFile_store(const char * filePath, size_t size) : Proce
 	m_dataLen = size;
 }
 
-ProcessFile_store::ProcessFile_store(const char * filePath) : ProcessFile(m_file)
+ProcessFile_store::ProcessFile_store(const char * filePath) : ProcessFileInterface(m_file)
 {
 	m_file.open(filePath);
 	prepare();
@@ -30,7 +29,7 @@ void ProcessFile_store::feedBlock(offset_t offset, const PacketData * data)
 
 void ProcessFile_store::feedNextBlock(const PacketData * data)
 {
-	streamoff offset = getPOffset();
+	streamoff offset = getOffset();
 
 	feedBlock(offset, data);
 

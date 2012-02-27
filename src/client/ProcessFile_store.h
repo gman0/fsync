@@ -2,10 +2,10 @@
 #define PROCESS_FILE_STORE
 
 #include <fstream>
-#include "ProcessFile.h"
+#include "ProcessFileInterface.h"
 #include "Packet.h"
 
-class ProcessFile_store : public ProcessFile
+class ProcessFile_store : public ProcessFileInterface
 {
 	private:
 		std::fstream m_file;
@@ -19,6 +19,9 @@ class ProcessFile_store : public ProcessFile
 		 */
 		ProcessFile_store(const char * filePath);
 		~ProcessFile_store();
+
+		inline void setOffset(offset_t offset) { m_file.seekp(offset); }
+		inline offset_t getOffset() { return m_file.tellg(); }
 
 		void feedBlock(offset_t offset, const PacketData * data);
 		void feedNextBlock(const PacketData * data);
