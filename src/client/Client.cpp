@@ -18,6 +18,7 @@
 */
 
 #include <iostream>
+#include <utility>
 #include "Client.h"
 #include "ProcessFile_store.h"
 #include "pack_unpack.h"
@@ -30,7 +31,7 @@ Client::Client(int argc, char ** argv) : AppInterface(argc, argv)
 	string host = m_config->getHost();
 
 	if (host == "\0")
-		throw FSException("Host is not defined", __FILE__, __LINE__);
+		throw FSException("Host is not defined");
 
 	ID_Path_pairList id_path_pairList = m_config->getPathList();
 	m_pathTransform = new PathTransform(id_path_pairList);
@@ -57,11 +58,11 @@ Client::~Client()
 
 void Client::getServer(const string & host)
 {
-	if (!m_networkManager->tryOpenSocket())
+	if (!m_networkManager->connectToServer())
 	{
 		cout << "Waiting for server..." << endl;
 
-		while (!m_networkManager->tryOpenSocket())
+		while (!m_networkManager->connectToServer())
 			SDL_Delay(100);
 	}
 
@@ -193,9 +194,9 @@ void Client::handleNew(const PacketHeader_FileInfo * ph_fi)
 
 	ProcessFile_store file(filePath.c_str(), ph_fi->m_size);
 
-	unsigned long blocksCount = ProcessFile::getBlocksCount(ph_fi->m_size);
+	unsigned int blocksCount = ProcessFileInterface::getBlocksCount(ph_fi->m_size);
 
-	for (unsigned long i = 0; i < blocksCount; i++)
+	for (unsigned int i = 0; i < blocksCount; i++)
 	{
 		PacketData data;
 
@@ -225,17 +226,10 @@ bool Client::chunkSearchAndStore(ProcessFile_store * file)
 	else if (ph.m_type == PACKET_CHUNK_INFO)
 	{
 		PacketHeader_ChunkInfo ph_ci = unpackFromHeader<PacketHeader_ChunkInfo>(&ph, PACKET_CHUNK_INFO);
-		ProcessFile::ChunkInfo ci;
-
-		ci.first = ph_ci.m_chunkType;
-		ci.second = ph_ci.m_chunkId;
-
-		offset_t offset = ProcessFile::getOffset(ci);
-
-		file->setGOffset(offset);
+		ProcessFileInterface::ChunkInfo ci = make_pair(ph_ci.m_chunkType, ph_ci.m_offset);
 
 		// send chunk's hash to server
-		hash_t hash = file->getHash();
+		hash_t hash = file->getHash(ci);
 		ph = packToHeader<hash_t>(&hash, PACKET_CHUNK_HASH);
 		m_networkManager->send(&ph, sizeof(PacketHeader));
 	}
