@@ -151,10 +151,10 @@ struct PacketHeader_FileInfo
 
 struct PacketHeader_ChunkInfo
 {
-	ProcessFile::CHUNK_TYPE m_chunkType;
-	int m_chunkId;
+	ProcessFileInterface::CHUNK_TYPE m_chunkType;
+	offset_t m_offset;
 
-	PacketHeader_ChunkInfo() : m_chunkType(ProcessFile::CHUNK_NONE), m_chunkId(0) {}
+	PacketHeader_ChunkInfo() : m_chunkType(ProcessFileInterface::CHUNK_NONE), m_offset(0) {}
 };
 
 #endif // PACKET_H
