@@ -21,10 +21,11 @@
 #define PROCESS_FILE_LOAD_H
 
 #include <fstream>
-#include "ProcessFile.h"
+#include "ProcessFileInterface.h"
 #include "Packet.h"
+#include "defs.h"
 
-class ProcessFile_load : public ProcessFile
+class ProcessFile_load : public ProcessFileInterface
 {
 	private:
 		std::fstream m_file;
@@ -33,6 +34,9 @@ class ProcessFile_load : public ProcessFile
 	public:
 		ProcessFile_load(const char * filePath);
 		~ProcessFile_load();
+
+		inline void setOffset(offset_t offset) { m_file.seekg(offset); }
+		inline offset_t getOffset() { return m_file.tellg(); }
 
 		PacketData * getBlock(offset_t offset);
 		PacketData * nextBlock();

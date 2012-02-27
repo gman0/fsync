@@ -22,7 +22,7 @@
 
 using namespace std;
 
-ProcessFile_load::ProcessFile_load(const char * filePath) : ProcessFile(m_file), m_block(0)
+ProcessFile_load::ProcessFile_load(const char * filePath) : ProcessFileInterface(m_file), m_block(0)
 {
 	m_file.open(filePath, ios::in);
 	prepare();
@@ -54,7 +54,7 @@ PacketData * ProcessFile_load::getBlock(offset_t offset)
 
 PacketData * ProcessFile_load::nextBlock()
 {
-	offset_t offset = getGOffset();
+	offset_t offset = getOffset();
 	PacketData * block = getBlock(offset);
 	m_file.seekg((streamoff)offset + getBlockSize(offset));
 
