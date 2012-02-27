@@ -17,8 +17,9 @@ OBJS    := $(patsubst %.$(SRCEXT), $(OBJDIR)/%.o, $(SRCS))
 
 INCLUDES = -I./..
 DEBUG    = -g
+OPTIMALIZATION = -O3
 CFLAGS   = -c -Wall `sdl-config --cflags` $(INCLUDES) $(DEBUG)
-LDFLAGS  = `sdl-config --libs` -lSDL_net -lboost_system -lboost_filesystem -lboost_thread \
+LDFLAGS  = `sdl-config --libs` -lboost_system -lboost_filesystem -lboost_thread \
 			$(shell find $(OBJDIR) $(COMMONOBJS) -maxdepth 1 -name '*.o')
 
 .PHONY: all clean distclean
