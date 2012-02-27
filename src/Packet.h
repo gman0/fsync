@@ -25,7 +25,7 @@
 #include <cstring>
 #include "defs.h"
 #include "hash.h"
-#include "ProcessFile.h"
+#include "ProcessFileInterface.h"
 
 enum PACKET_TYPE_ID
 {

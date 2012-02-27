@@ -17,8 +17,8 @@
     along with fsync.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef PROCESS_FILE_H
-#define PROCESS_FILE_H
+#ifndef PROCESS_FILE_INTERFACE_H
+#define PROCESS_FILE_INTERFACE_H
 
 #include <fstream>
 #include <stdint.h>
@@ -84,4 +84,4 @@ class ProcessFileInterface
 };
 
 
-#endif // PROCESS_FILE_H
+#endif // PROCESS_FILE_INTERFACE_H

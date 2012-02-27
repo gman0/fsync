@@ -20,7 +20,7 @@
 #include <cstring>
 #include <cassert>
 #include <cmath>
-#include "ProcessFile.h"
+#include "ProcessFileInterface.h"
 #include "LogManager.h"
 #include "FSException.h"
 
