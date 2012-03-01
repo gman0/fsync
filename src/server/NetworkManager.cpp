@@ -17,7 +17,6 @@
     along with fsync.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <iostream>
 #include <string>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -27,7 +26,7 @@
 #include "NetworkManager.h"
 #include "LogManager.h"
 #include "FSException.h"
-using namespace std;
+
 NetworkManager::NetworkManager(int port) :
 	NetworkManagerInterface(0, port),
 	m_clientSocketDescriptor(0)
