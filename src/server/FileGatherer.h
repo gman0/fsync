@@ -31,6 +31,7 @@
 #include "hash.h"
 
 class PathTransform;
+class Rollback;
 
 class FileGatherer
 {
@@ -94,20 +95,25 @@ class FileGatherer
 			/*
 			 * source is defined as F_SRC_DB (Flag: Source - database) for readFromDb method and F_SRC_FS (Flag: Source - file system)
 			 * for createFileList method.
+			 *
+			 * F_SRC_RB is for rollback (which uses it's own FileInfo container outside of FileGatherer, therefore, we need to add
+			 * another source type so we can decide from which container we want to take FileInfo's).
 			 */
 			F_SRC_DB =			0x0001,
 			F_SRC_FS =			0x0002,
+			F_SRC_RB =			0x0004,
 
-			F_ACTION_ADD =		0x0004,
-			F_ACTION_CHANGE =	0x0008,
-			F_ACTION_DELETE =	0x0010
+			F_ACTION_ADD =		0x0008,
+			F_ACTION_CHANGE =	0x0010,
+			F_ACTION_DELETE =	0x0011
 		};
 
 
 		struct FileInfoProxy
 		{
-			typedef size_t src_fs_t;
-			typedef std::streampos src_db_t;
+			typedef size_t src_fs_t; // file system
+			typedef std::streampos src_db_t; // file database
+			typedef std::streampos src_rb_t; // rollback
 
 			void * m_object;
 			short int m_flags;
@@ -116,6 +122,9 @@ class FileGatherer
 			{}
 
 			FileInfoProxy(void * object, FILE_INFO_FLAG source) : m_object(object), m_flags(source)
+			{}
+
+			FileInfoProxy(void * object, short int flags) : m_object(object), m_flags(flags)
 			{}
 		};
 
@@ -130,6 +139,7 @@ class FileGatherer
 
 		Config * m_config;
 		PathTransform * m_pathTransform;
+		Rollback * m_rollbackSolver;
 		boost::filesystem::path m_fileDbPath;
 
 		FIvector m_fileInfoVector;
@@ -145,25 +155,22 @@ class FileGatherer
 		FileGatherer(Config * config, PathTransform * pathTransform, ID_Path_pairList & id_path_pairList);
 		~FileGatherer();
 
+		void setRollbackSolver(Rollback * rollbackSolver);
+
 		void updateDb();
 		FIProxyPtrVector getChanges();
 
 		FileInfo getFileInfo(const FileInfoProxy * proxy);
 
-		/*
-		 * Changing the size of m_fileInfoVector while using this method will result an in invalid pointer.
-		 */
-		FileInfo * getFileInfoPtr_SRC_FS(const FileInfoProxy * proxy);
+		static FILE_INFO_FLAG getSource(short int flags);
+		static FILE_INFO_FLAG getAction(short int flags);
 
-		FILE_INFO_FLAG getSource(short int flags);
-		FILE_INFO_FLAG getAction(short int flags);
+		static bool isOn(short int flags, FILE_INFO_FLAG f);
+		static inline bool isOff(short int flags, FILE_INFO_FLAG f) { return !isOn(flags, f); }
 
-		bool isOn(short int flags, FILE_INFO_FLAG f);
-		inline bool isOff(short int flags, FILE_INFO_FLAG f) { return !isOn(flags, f); }
-
-		inline bool flaggedAdd(short int flags) { return isOn(flags, F_ACTION_ADD); }
-		inline bool flaggedChange(short int flags) { return isOn(flags, F_ACTION_CHANGE); }
-		inline bool flaggedDelete(short int flags) { return isOn(flags, F_ACTION_DELETE); }
+		static inline bool flaggedAdd(short int flags) { return isOn(flags, F_ACTION_ADD); }
+		static inline bool flaggedChange(short int flags) { return isOn(flags, F_ACTION_CHANGE); }
+		static inline bool flaggedDelete(short int flags) { return isOn(flags, F_ACTION_DELETE); }
 
 	private:
 		inline size_t getOffset(size_t n) { return n * sizeof(FileInfo); }
