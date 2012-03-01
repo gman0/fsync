@@ -34,10 +34,15 @@ class Config : public ConfigParser
 
 		unsigned int getPort();
 		std::string getHost();
+
 		bool recursiveFileSearchEnabled();
 		bool partialFileTransferEnabled();
+
 		ID_Path_pairList getPathList();
 		boost::filesystem::path getFileDbPath();
+		boost::filesystem::path getRollbackFilePath();
+		boost::filesystem::path getFsyncHomePath();
+
 		bool forceNoChangeCheck();
 };
 

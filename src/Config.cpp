@@ -18,6 +18,8 @@
 */
 
 #include <iostream>
+#include <cstdlib>
+#include <string>
 #include "Config.h"
 
 using namespace std;
@@ -61,7 +63,18 @@ ID_Path_pairList Config::getPathList()
 
 path Config::getFileDbPath()
 {
+	// TODO: add hash-based db name
 	return ConfigParser::getFileDbPath();
+}
+
+path Config::getFsyncHomePath()
+{
+	return path(getenv("HOME")) / ".fsync";
+}
+
+path Config::getRollbackFilePath()
+{
+	return path(getFileDbPath().string() + ".rollback");  
 }
 
 bool Config::forceNoChangeCheck()
