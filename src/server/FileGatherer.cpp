@@ -23,6 +23,7 @@
 #include <cstdlib>
 #include "FileGatherer.h"
 #include "PathTransform.h"
+#include "Rollback.h"
 #include "FSException.h"
 #include "LogManager.h"
 
@@ -32,6 +33,7 @@ using namespace boost::filesystem;
 FileGatherer::FileGatherer(Config * config, PathTransform * pathTransform, ID_Path_pairList & id_path_pairList) :
 	m_config(config),
 	m_pathTransform(pathTransform),
+	m_rollbackSolver(0),
 	m_fileDbPath(config->getFileDbPath()),
 	m_dbFileIStream(0)
 {
@@ -99,6 +101,11 @@ FileGatherer::~FileGatherer()
 	delete m_dbFileIStream;
 }
 
+void FileGatherer::setRollbackSolver(Rollback * rollbackSolver)
+{
+	m_rollbackSolver = rollbackSolver;
+}
+
 void FileGatherer::createFileList(const ID_Path_pairList & path_pairList)
 {
 	size_t index = 0;
@@ -143,7 +150,7 @@ void FileGatherer::createFileList(const ID_Path_pairList & path_pairList)
 					m_fileInfoVector.push_back(fi);
 
 					indexPtr = new FileInfoProxy::src_fs_t(index++);
-					fiProxyPtr = new FileInfoProxy((void*)indexPtr, F_SRC_FS);
+					fiProxyPtr = new FileInfoProxy(indexPtr, F_SRC_FS);
 
 					// compensation for partial hash tree
 					if (!m_hashTree[indices[0]][indices[1]][indices[2]])
@@ -342,16 +349,13 @@ FileGatherer::FileInfo FileGatherer::getFileInfo(const FileGatherer::FileInfoPro
 
 		return *fiPtr;
 	}
+	else if (source == F_SRC_RB)
+	{
+		assert(m_rollbackSolver);
+		return m_rollbackSolver->getFileInfo(proxy);
+	}
 
 	return FileInfo();
-}
-
-FileGatherer::FileInfo * FileGatherer::getFileInfoPtr_SRC_FS(const FileGatherer::FileInfoProxy * proxy)
-{
-	if (getSource(proxy->m_flags) != F_SRC_FS)
-		return 0;
-	
-	return &m_fileInfoVector.at(*(FileInfoProxy::src_fs_t*)proxy->m_object);
 }
 
 bool FileGatherer::isOn(short int flags, FileGatherer::FILE_INFO_FLAG f)
@@ -365,6 +369,8 @@ FileGatherer::FILE_INFO_FLAG FileGatherer::getSource(short int flags)
 		return F_SRC_FS;
 	else if (isOn(flags, F_SRC_DB))
 		return F_SRC_DB;
+	else if (isOn(flags, F_SRC_RB))
+		return F_SRC_RB;
 	else
 		return F_NONE;
 }
