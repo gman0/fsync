@@ -26,16 +26,28 @@
 #include "FileGatherer.h"
 #include "PathTransform.h"
 #include "ProcessFile_load.h"
+#include "Rollback.h"
 #include "pack_unpack.h"
 
 using namespace std;
 using namespace boost::filesystem;
 
-Server::Server(int argc, char ** argv) : AppInterface(argc, argv)
+Server::Server(int argc, char ** argv) : AppInterface(argc, argv), m_rollbackSolver(0), m_willRollback(false)
 {
 	ID_Path_pairList id_path_pairList = m_config->getPathList();
 	m_pathTransform = new PathTransform(id_path_pairList);
 	m_fileGatherer = new FileGatherer(m_config, m_pathTransform, id_path_pairList);
+	m_rollbackSolver = new Rollback(m_config, m_fileGatherer);
+
+	if (exists(m_config->getRollbackFilePath()))
+	{
+		m_fileGatherer->setRollbackSolver(m_rollbackSolver);
+		m_rollbackSolver->buildRollbackProxies();
+		m_willRollback = true;
+
+		cout << "fsync has detected " << m_rollbackSolver->getRollbackProxyVector().size() <<
+				" rollbacks from the previous session and will try to redo the actions." << endl;
+	}
 
 	cout << "Gathering changes..." << flush;
 	m_proxyVector = m_fileGatherer->getChanges();
@@ -57,10 +69,11 @@ Server::Server(int argc, char ** argv) : AppInterface(argc, argv)
 	else
 		cout << "There was an error during synchronization." << endl;
 
+
+	processRollbacks();
+
 	if (m_proxyVector.size() > 0)
 	{
-		commitRollBack();
-
 		cout << "Updating database..." << flush;
 		m_fileGatherer->updateDb();
 		cout << "done." << endl;
@@ -71,9 +84,10 @@ Server::~Server()
 {
 	cout << "Quitting..." << endl;
 
+	delete m_networkManager;
+	delete m_rollbackSolver;
 	delete m_fileGatherer;
 	delete m_pathTransform;
-	delete m_networkManager;
 }
 
 void Server::getClient()
@@ -91,12 +105,10 @@ void Server::getClient()
 	cout << "Connection established with " << address << ':' << m_networkManager->getPort() << endl;
 }
 
-void Server::transferFiles()
+void Server::transferFilesLoop(const FileGatherer::FIProxyPtrVector & proxies)
 {
-	sendObjectCount(m_proxyVector.size());
-
-	for (FileGatherer::FIProxyPtrVector::const_iterator proxyIt = m_proxyVector.begin();
-		proxyIt != m_proxyVector.end(); proxyIt++)
+	for (FileGatherer::FIProxyPtrVector::const_iterator proxyIt = proxies.begin();
+		proxyIt != proxies.end(); proxyIt++)
 	{
 		PacketHeader ph = prepareFileTransfer(*proxyIt);
 
@@ -105,6 +117,18 @@ void Server::transferFiles()
 		else if (ph.m_type == PACKET_RESPONE_FREE_SPACE_A_CHANGE)
 			handleChange(unpackFromHeader<bool>(&ph, PACKET_RESPONE_FREE_SPACE_A_CHANGE), *proxyIt);
 	}
+}
+
+void Server::transferFiles()
+{
+	FileGatherer::FIProxyPtrVector & rollbackProxyVec = m_rollbackSolver->getRollbackProxyVector();
+
+	sendObjectCount(m_proxyVector.size() + rollbackProxyVec.size());
+
+	if (m_willRollback)
+		transferFilesLoop(rollbackProxyVec);
+
+	transferFilesLoop(m_proxyVector);
 }
 
 void Server::sendObjectCount(size_t size)
@@ -142,7 +166,7 @@ void Server::handleNew(bool hasFreeSpace, FileGatherer::FileInfoProxy * proxy)
 			m_networkManager->send(file.nextBlock(), sizeof(PacketData));
 	}
 	else
-		addRollBack(proxy);
+		addRollback(proxy);
 }
 
 void Server::handleChange(bool hasFreeSpace, FileGatherer::FileInfoProxy * proxy)
@@ -161,7 +185,7 @@ void Server::handleChange(bool hasFreeSpace, FileGatherer::FileInfoProxy * proxy
 		m_networkManager->send(&ph_next, sizeof(PacketHeader));
 	}
 	else
-		addRollBack(proxy);
+		addRollback(proxy);
 }
 
 void Server::recursiveChunkSearch(ProcessFile_load * file, offset_t endRange)
@@ -226,28 +250,19 @@ PacketHeader Server::packFileInfo(const FileGatherer::FileInfo * fi, short int f
 	return PacketHeader(PACKET_FILE_INFO, &ph_fi, sizeof(PacketHeader_FileInfo));
 }
 
-void Server::commitRollBack()
+void Server::processRollbacks()
 {
-	if (m_proxyRollBackVector.size() > 0)
+	if (m_rollbackProxyVector.size() > 0)
 	{
 		cout << "Rolling back changes..." << flush;
-
-		for (FileGatherer::FIProxyPtrVector::iterator proxyIt = m_proxyRollBackVector.begin();
-			 proxyIt != m_proxyRollBackVector.end();
-			 proxyIt++)
-		{
-			rollBack(*proxyIt);
-		}
-
+		m_rollbackSolver->commitRollbacks(m_rollbackProxyVector);
 		cout << "done." << endl;
 	}
+	else
+		m_rollbackSolver->cleanRollbackFile();
 }
 
-void Server::rollBack(const FileGatherer::FileInfoProxy * proxy)
+void Server::addRollback(FileGatherer::FileInfoProxy * proxy)
 {
-}
-
-void Server::addRollBack(FileGatherer::FileInfoProxy * proxy)
-{
-	m_proxyRollBackVector.push_back(proxy);
+	m_rollbackProxyVector.push_back(proxy);
 }

@@ -26,6 +26,7 @@
 #include "Packet.h"
 
 class ProcessFile_load;
+class Rollback;
 
 class Server : public AppInterface
 {
@@ -33,9 +34,11 @@ class Server : public AppInterface
 		PathTransform * m_pathTransform;
 		FileGatherer * m_fileGatherer;
 		NetworkManager * m_networkManager;
+		Rollback * m_rollbackSolver;
 
 		FileGatherer::FIProxyPtrVector m_proxyVector;
-		FileGatherer::FIProxyPtrVector m_proxyRollBackVector;
+		FileGatherer::FIProxyPtrVector m_rollbackProxyVector;
+		bool m_willRollback;
 
 	public:
 		Server(int argc, char ** argv);
@@ -46,6 +49,7 @@ class Server : public AppInterface
 		const Server & operator=(const Server & s);
 
 		void getClient();
+		void transferFilesLoop(const FileGatherer::FIProxyPtrVector & proxies);
 		void transferFiles();
 
 		void sendObjectCount(size_t size);
@@ -58,9 +62,8 @@ class Server : public AppInterface
 		 * file system and save them into database using FileGatherer's updateDb so we can redo
 		 * the action when the user runs server again.
 		 */
-		void rollBack(const FileGatherer::FileInfoProxy * proxy);
-		void addRollBack(FileGatherer::FileInfoProxy * proxy);
-		void commitRollBack();
+		void addRollback(FileGatherer::FileInfoProxy * proxy);
+		void processRollbacks();
 
 		void handleNew(bool hasFreeSpace, FileGatherer::FileInfoProxy * proxy);
 		void handleChange(bool hasFreeSpace, FileGatherer::FileInfoProxy * proxy);
