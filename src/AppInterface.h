@@ -40,13 +40,7 @@ class AppInterface
 	public:
 		AppInterface(int argc, char ** argv)
 		{
-			/*
-			 * this wasn't tested on windows
-			 * I will have to deal with it later though
-			 */
-			path homePath(getenv("HOME"));
-
-			path fsyncPath(homePath / ".fsync");
+			path fsyncPath = m_config->getFsyncHomePath();
 			checkAndCreate(fsyncPath);
 
 #ifdef SERVER_H
