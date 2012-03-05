@@ -110,9 +110,9 @@ struct PacketHeader_FileInfo
 	{
 		A_NONE		= 0x0000,
 
-		A_ADD		= 0x0004,
-		A_CHANGE	= 0x0008,
-		A_DELETE	= 0x0010
+		A_ADD		= 0x0008,
+		A_CHANGE	= 0x0010,
+		A_DELETE	= 0x0020
 	};
 
 	short int m_pathId;
