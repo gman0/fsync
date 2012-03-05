@@ -105,7 +105,7 @@ class FileGatherer
 
 			F_ACTION_ADD =		0x0008,
 			F_ACTION_CHANGE =	0x0010,
-			F_ACTION_DELETE =	0x0011
+			F_ACTION_DELETE =	0x0020
 		};
 
 
