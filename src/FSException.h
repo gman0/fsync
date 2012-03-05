@@ -36,36 +36,28 @@ class FSException : public exception
 		int m_line;
 
 	public:
+		// obsolete
 		FSException(const char * message, const char * file, int line) : m_message(string(message)), m_file(string(file)),
 																		m_line(line)
 		{
-			makeErrorMsg();
+			m_what = message;
 		}
 
+		// obsolete
 		FSException(const string & message, const char * file, int line) : m_message(message),
 																		m_file(string(file)), m_line(line)
 		{
-			makeErrorMsg();
+			m_what = message;
 		}
 
 		FSException(const string & message)
 		{
-			m_message = message;
+			m_what = message;
 		}
 
 		FSException(const char * message)
 		{
-			m_message = message;
-		}
-
-		void makeErrorMsg()
-		{
-			/*m_what = m_file;
-			m_what += ':';
-			m_what += m_line;
-			m_what += ": " + m_message;
-			*/
-			m_what = m_message;
+			m_what = message;
 		}
 
 		virtual const char * what() const throw()
