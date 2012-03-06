@@ -28,7 +28,9 @@
 class NetworkManager : public NetworkManagerInterface
 {
 	public:
-		NetworkManager(const char * ip, int port) : NetworkManagerInterface(ip, port) {}
+		NetworkManager(const char * ip, int port, int recvTimeout = 0, int sendTimeout = 0) :
+			NetworkManagerInterface(ip, port, recvTimeout, sendTimeout)
+		{}
 
 		bool connectToServer();
 		void closeConnection();
