@@ -28,6 +28,7 @@
 #include <cstring>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -41,8 +42,15 @@ class NetworkManagerInterface
 		addrinfo m_hints;
 		addrinfo * m_serverInfo;
 
+		/*
+		 * Either we have triggered SIGPIPE or timeout has ran out.
+		 * Note that when we make recv/send syscalls we suppress SIGPIPE
+		 * handler by setting MSG_NOSIGNAL flag to recv and send.
+		 */
+		bool m_ioErr;
+
 	public:
-		NetworkManagerInterface(const char * ip, int port) : m_serverSocketDescriptor(0), m_serverInfo(0)
+		NetworkManagerInterface(const char * ip, int port, int recvTO, int sendTO) : m_serverSocketDescriptor(0), m_serverInfo(0), m_ioErr(false)
 		{
 			memset(&m_hints, 0, sizeof(addrinfo));
 
@@ -67,9 +75,22 @@ class NetworkManagerInterface
 
 			m_serverSocketDescriptor = socket(m_serverInfo->ai_family, m_serverInfo->ai_socktype, m_serverInfo->ai_protocol);
 
+			
 			if (m_serverSocketDescriptor < 0)
 			{
 				errorMsg = "Cannot open socket: ";
+				errorMsg += strerror(errno);
+				LogManager::getInstancePtr()->log(errorMsg, LogManager::L_ERROR);
+				throw FSException(errorMsg);
+			}
+
+			timeval recvTimeout = {recvTO, 0};
+			timeval sendTimeout = {sendTO, 0};
+
+			if (setsockopt(m_serverSocketDescriptor, SOL_SOCKET, SO_RCVTIMEO, &recvTimeout, sizeof(timeval)) == -1 ||
+				setsockopt(m_serverSocketDescriptor, SOL_SOCKET, SO_SNDTIMEO, &sendTimeout, sizeof(timeval)) == -1)
+			{
+				errorMsg = "Cannot set flags to socket: ";
 				errorMsg += strerror(errno);
 				LogManager::getInstancePtr()->log(errorMsg, LogManager::L_ERROR);
 				throw FSException(errorMsg);
@@ -85,16 +106,21 @@ class NetworkManagerInterface
 
 		int send(int socketDescriptor, const void * data, int len)
 		{
+			if (m_ioErr) return 0;
+
 			int total = 0;
 			int bytesLeft = len;
 			int n = 0;
 
 			while (total < len)
 			{
-				n = ::send(socketDescriptor, (const unsigned char*)data + total, bytesLeft, 0);
+				n = ::send(socketDescriptor, (const unsigned char*)data + total, bytesLeft, MSG_NOSIGNAL);
 
 				if (n == -1)
+				{
+					m_ioErr = true;
 					break;
+				}
 
 				total += n;
 				bytesLeft -= n;
@@ -105,16 +131,21 @@ class NetworkManagerInterface
 
 		int recv(int socketDescriptor, void * data, int len)
 		{
+			if (m_ioErr) return 0;
+
 			int total = 0;
 			int bytesLeft = len;
 			int n = 0;
 
 			while (total < len)
 			{
-				n  = ::recv(socketDescriptor, (unsigned char*)data + total, bytesLeft, 0);
+				n  = ::recv(socketDescriptor, (unsigned char*)data + total, bytesLeft, MSG_NOSIGNAL);
 
 				if (n == -1)
+				{
+					m_ioErr = true;
 					break;
+				}
 
 				total += n;
 				bytesLeft -= n;
@@ -122,7 +153,7 @@ class NetworkManagerInterface
 
 			return total;
 		}
-	
+
 	protected:
 
 		void * getInAddr(sockaddr * sa)
