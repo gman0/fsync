@@ -52,7 +52,8 @@ Server::Server(int argc, char ** argv) : AppInterface(argc, argv), m_rollbackSol
 	cout << "Gathering changes..." << flush;
 	m_proxyVector = m_fileGatherer->getChanges();
 
-	m_networkManager = new NetworkManager(m_config->getPort());
+	m_networkManager = new NetworkManager(m_config->getPort(), m_config->getRecvTimeout(),
+											m_config->getSendTimeout());
 
 	getClient();
 
@@ -116,6 +117,10 @@ void Server::transferFilesLoop(const FileGatherer::FIProxyPtrVector & proxies)
 			handleNew(unpackFromHeader<bool>(&ph, PACKET_RESPONE_FREE_SPACE_A_NEW), *proxyIt);
 		else if (ph.m_type == PACKET_RESPONE_FREE_SPACE_A_CHANGE)
 			handleChange(unpackFromHeader<bool>(&ph, PACKET_RESPONE_FREE_SPACE_A_CHANGE), *proxyIt);
+		else if (ph.m_type == PACKET_NEXT)
+			continue;
+		else
+			addRollback(*proxyIt);
 	}
 }
 
