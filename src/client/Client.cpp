@@ -35,7 +35,7 @@ Client::Client(int argc, char ** argv) : AppInterface(argc, argv)
 
 	ID_Path_pairList id_path_pairList = m_config->getPathList();
 	m_pathTransform = new PathTransform(id_path_pairList);
-	m_networkManager = new NetworkManager(host.c_str(), m_config->getPort());
+	m_networkManager = new NetworkManager(host.c_str(), m_config->getPort(), m_config->getRecvTimeout(), m_config->getSendTimeout());
 
 	getServer(host);
 
@@ -157,6 +157,7 @@ bool Client::prepareFileTransfer(PacketHeader * ph_result, PacketHeader_FileInfo
 
 			case PacketHeader_FileInfo::A_DELETE:
 				deleteFile(m_pathTransform->glueCutPath(ph_fi_out->m_pathId, ph_fi_out->m_path));
+				ph_result->m_type = PACKET_NEXT;
 				break;
 			default:
 				ph_result->m_type = PACKET_NEXT;
