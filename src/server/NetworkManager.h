@@ -29,7 +29,7 @@ class NetworkManager : public NetworkManagerInterface
 		sockaddr_storage m_clientAddrInfo;
 
 	public:
-		NetworkManager(int port);
+		NetworkManager(int port, int recvTimeout = 0, int sendTimeout = 0);
 
 		void listen();
 		bool acceptConnection();

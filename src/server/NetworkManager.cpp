@@ -27,8 +27,8 @@
 #include "LogManager.h"
 #include "FSException.h"
 
-NetworkManager::NetworkManager(int port) :
-	NetworkManagerInterface(0, port),
+NetworkManager::NetworkManager(int port, int recvTimeout, int sendTimeout) :
+	NetworkManagerInterface(0, port, recvTimeout, sendTimeout),
 	m_clientSocketDescriptor(0)
 {
 	string errorMsg;
