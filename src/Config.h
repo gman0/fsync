@@ -43,6 +43,9 @@ class Config : public ConfigParser
 		boost::filesystem::path getRollbackFilePath();
 		boost::filesystem::path getFsyncHomePath();
 
+		int getRecvTimeout();
+		int getSendTimeout();
+
 		bool forceNoChangeCheck();
 };
 

@@ -77,6 +77,16 @@ path Config::getRollbackFilePath()
 	return path(getFileDbPath().string() + ".rollback");  
 }
 
+int Config::getRecvTimeout()
+{
+	return 2;
+}
+
+int Config::getSendTimeout()
+{
+	return 2;
+}
+
 bool Config::forceNoChangeCheck()
 {
 	return true;
