@@ -13,7 +13,8 @@ SRCS    := $(shell find $(SRCDIR) -maxdepth 1 -name '*.$(SRCEXT)')
 OBJS    := $(patsubst %.$(SRCEXT), $(OBJDIR)/%.o, $(SRCS))
 
 DEBUG    = -g
-CFLAGS   = -c -Wall `sdl-config --cflags`
+OPTIMALIZATION = -O3
+CFLAGS   = -c -Wall $(DEBUG)
 
 .PHONY: all clean
 
