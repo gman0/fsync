@@ -23,14 +23,19 @@
 #include <list>
 #include <boost/filesystem.hpp>
 #include <string>
+#include "ConfigOptions.h"
 #include "ConfigParser.h"
 
-class Config : public ConfigParser
+class Config : public ConfigOptions, public ConfigParser 
 {
 	public:
-		Config(int argc, char * argv[], const char * configFilePath, const char * fsyncHomePath);
-		Config(int argc, char * argv[], const boost::filesystem::path & configFilePath,
-										const boost::filesystem::path & fsyncHomePath);
+		Config(int argc, char * argv[], const char * configFilePath, const char * optStr,
+				const char * package, const char * version, const char * description,
+				const char * help, const char * helpOptions);
+		Config(int argc, char * argv[], const boost::filesystem::path & configFilePath, const char * optStr,
+				const char * package, const char * version, const char * description,
+				const char * help, const char * helpOptions);
+
 
 		unsigned int getPort();
 		std::string getHost();
@@ -41,12 +46,18 @@ class Config : public ConfigParser
 		ID_Path_pairList getPathList();
 		boost::filesystem::path getFileDbPath();
 		boost::filesystem::path getRollbackFilePath();
-		boost::filesystem::path getFsyncHomePath();
 
 		int getRecvTimeout();
 		int getSendTimeout();
 
-		bool forceNoChangeCheck();
+		bool updateDbAndQuit();
+
+		bool dontSaveDb();
+		bool ignoreDb();
+		bool ignoreRb();
+
+	private:
+		inline bool checkKey(const std::string & key) { return !key.empty(); }
 };
 
 #endif // CONFIG_H

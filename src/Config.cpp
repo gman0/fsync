@@ -25,25 +25,30 @@
 using namespace std;
 using namespace boost::filesystem;
 
-Config::Config(int argc, char ** argv, const char * configFilePath, const char * fsyncHomePath) :
-	ConfigParser(configFilePath, fsyncHomePath)
-{
-}
+Config::Config(int argc, char ** argv, const char * configFilePath, const char * optStr, const char * package,
+				const char * version, const char * description, const char * help, const char * helpOptions) :
+	ConfigOptions(argc, argv, optStr, package, version, description, help, helpOptions),
+	ConfigParser((getConfigFile().empty() ? configFilePath : getConfigFile()))
+{}
 
-Config::Config(int argc, char ** argv, const path & configFilePath, const path & fsyncHomePath) :
-	ConfigParser(configFilePath, fsyncHomePath)
-{
-}
+Config::Config(int argc, char ** argv, const path & configFilePath, const char * optStr, const char * package,
+				const char * version, const char * description, const char * help, const char * helpOptions) :
+	ConfigOptions(argc, argv, optStr, package, version, description, help, helpOptions),
+	ConfigParser((getConfigFile().empty() ? configFilePath : getConfigFile()))
+{}
+
 
 unsigned int Config::getPort()
 {
-	unsigned int port = ConfigParser::getPort();
+	unsigned int port = ConfigOptions::getPort();
+	port = (port) ? port : ConfigParser::getPort();
 	return (port) ? port : 2000;
 }
 
 string Config::getHost()
 {
-	return ConfigParser::getHost();
+	string host = ConfigOptions::getHost();
+	return (checkKey(host)) ? host : ConfigParser::getHost();
 }
 
 bool Config::recursiveFileSearchEnabled()
@@ -63,13 +68,8 @@ ID_Path_pairList Config::getPathList()
 
 path Config::getFileDbPath()
 {
-	// TODO: add hash-based db name
-	return ConfigParser::getFileDbPath();
-}
-
-path Config::getFsyncHomePath()
-{
-	return path(getenv("HOME")) / ".fsync";
+	string path = ConfigOptions::getDbFile();
+	return (checkKey(path)) ? path : ConfigParser::getFileDbPath();
 }
 
 path Config::getRollbackFilePath()
@@ -79,15 +79,32 @@ path Config::getRollbackFilePath()
 
 int Config::getRecvTimeout()
 {
-	return 2;
+	unsigned int timeout = ConfigParser::getRecvTimeout();
+	return (timeout) ? timeout : 3;
 }
 
 int Config::getSendTimeout()
 {
-	return 2;
+	unsigned int timeout = ConfigParser::getSendTimeout();
+	return (timeout) ? timeout : 3;
 }
 
-bool Config::forceNoChangeCheck()
+bool Config::ignoreDb()
 {
-	return true;
+	return ConfigOptions::ignoreDb();
+}
+
+bool Config::ignoreRb()
+{
+	return ConfigOptions::ignoreRb();
+}
+
+bool Config::dontSaveDb()
+{
+	return ConfigOptions::dontSaveDb();
+}
+
+bool Config::updateDbAndQuit()
+{
+	return ConfigOptions::updateDb();
 }
