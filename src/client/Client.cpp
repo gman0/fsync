@@ -19,6 +19,7 @@
 
 #include <iostream>
 #include <utility>
+#include <unistd.h>
 #include "Client.h"
 #include "ProcessFile_store.h"
 #include "pack_unpack.h"
@@ -35,7 +36,8 @@ Client::Client(int argc, char ** argv) : AppInterface(argc, argv)
 
 	ID_Path_pairList id_path_pairList = m_config->getPathList();
 	m_pathTransform = new PathTransform(id_path_pairList);
-	m_networkManager = new NetworkManager(host.c_str(), m_config->getPort(), m_config->getRecvTimeout(), m_config->getSendTimeout());
+	m_networkManager = new NetworkManager(host.c_str(), m_config->getPort(), m_config->getRecvTimeout(),
+											m_config->getSendTimeout());
 
 	getServer(host);
 
@@ -63,7 +65,7 @@ void Client::getServer(const string & host)
 		cout << "Waiting for server..." << endl;
 
 		while (!m_networkManager->connectToServer())
-			SDL_Delay(100);
+			sleep(1);
 	}
 
 	cout << "Connection established with " << host << ':' << m_config->getPort() << endl;
