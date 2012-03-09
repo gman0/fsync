@@ -72,8 +72,8 @@ class ConfigParser
 		CFGMap  m_pairs;
 
 	public:
-		ConfigParser(const char * configFile, const char * fsyncHomePath);
-		ConfigParser(const boost::filesystem::path & configFile, const boost::filesystem::path & fsyncHomePath);
+		ConfigParser(const char * configFile);
+		ConfigParser(const boost::filesystem::path & configFile);
 
 	protected:
 		ID_Path_pairList getPathList();
@@ -82,6 +82,8 @@ class ConfigParser
 		bool partialFileTransferEnabled();
 		std::string getHost();
 		boost::filesystem::path getFileDbPath();
+		unsigned int getRecvTimeout();
+		unsigned int getSendTimeout();
 
 	private:
 		void generatePairs(const std::string & configBuffer);

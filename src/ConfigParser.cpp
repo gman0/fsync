@@ -22,14 +22,15 @@
 #include <cstring>
 #include <cstdlib>
 #include "ConfigParser.h"
+#include "ConfigHelpers.h"
 #include "FSException.h"
 #include "LogManager.h"
 
 using namespace std;
 using namespace boost::filesystem;
 
-ConfigParser::ConfigParser(const char * configFile, const char * fsyncHomePath) :
-	m_configFilePath(configFile), m_fsyncHomePath(fsyncHomePath)
+ConfigParser::ConfigParser(const char * configFile) :
+	m_configFilePath(configFile)
 {
 	ifstream fin(configFile);
 	string configBuffer;
@@ -57,12 +58,12 @@ ConfigParser::ConfigParser(const char * configFile, const char * fsyncHomePath) 
 
 	fin.close();
 
-
+	m_fsyncHomePath = getFsyncHomePath();
 	generatePairs(configBuffer);
 }
 
-ConfigParser::ConfigParser(const path & configFile, const path & fsyncHomePath) :
-	m_configFilePath(configFile), m_fsyncHomePath(fsyncHomePath)
+ConfigParser::ConfigParser(const path & configFile) :
+	m_configFilePath(configFile)
 {
 	ifstream fin(configFile.c_str());
 	string configBuffer;
@@ -90,7 +91,7 @@ ConfigParser::ConfigParser(const path & configFile, const path & fsyncHomePath) 
 
 	fin.close();
 
-
+	m_fsyncHomePath = getFsyncHomePath();
 	generatePairs(configBuffer);
 }
 
@@ -328,4 +329,25 @@ path ConfigParser::getFileDbPath()
 {
 	list<string> l = m_pairs["file_database_path"];
 	return checkKey<path>(l, (m_fsyncHomePath / "server.db").c_str());
+}
+
+unsigned int ConfigParser::getRecvTimeout()
+{
+	list<string> l = m_pairs["recv_timeout"];
+
+	if (l.empty())
+		return 0;
+	
+	return atoi(l.back().c_str());
+}
+
+unsigned int ConfigParser::getSendTimeout()
+{
+	list<string> l = m_pairs["send_timeout"];
+
+	if (l.empty())
+		return 0;
+	
+	return atoi(l.back().c_str());
+
 }
