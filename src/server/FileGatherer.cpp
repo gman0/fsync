@@ -52,7 +52,7 @@ FileGatherer::FileGatherer(Config * config, PathTransform * pathTransform, ID_Pa
 	cout << "Creating file list..." << flush;
 
 	m_dbFileIStream = new ifstream;
-	listFiles(id_path_pairList);
+	listFiles(id_path_pairList, (m_config->ignoreDb() | m_config->updateDbAndQuit()));
 
 	cout << "done." << endl;
 }
@@ -199,7 +199,7 @@ void FileGatherer::updateDb()
 	writeToDb(m_fileInfoVector);
 }
 
-void FileGatherer::listFiles(const ID_Path_pairList & path_pairList)
+void FileGatherer::listFiles(const ID_Path_pairList & path_pairList, bool ignoreDb)
 {
 	m_hashTree = new HashTreePtr**[HASH_LENGTH];
 
@@ -215,7 +215,7 @@ void FileGatherer::listFiles(const ID_Path_pairList & path_pairList)
 	}
 
 	createFileList(path_pairList);
-	readFromDb();
+	if (!ignoreDb) readFromDb();
 }
 
 FileGatherer::FIProxyPtrVector FileGatherer::getChanges()
