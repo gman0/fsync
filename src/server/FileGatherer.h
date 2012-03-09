@@ -190,7 +190,7 @@ class FileGatherer
 
 		void insertIntoHashTree(FileInfoProxy * fiProxy, short int * indices);
 		bool checkPairExistence(const short int * indices, const uint32_t & hash, FileInfoProxy * proxy);
-		void listFiles(const ID_Path_pairList & path_pairList);
+		void listFiles(const ID_Path_pairList & path_pairList, bool ignoreDb);
 
 		void readFromDb();
 		void writeToDb(FIvector & fileInfoVec) const;
