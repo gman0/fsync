@@ -1,4 +1,4 @@
-APP      = fsync_server
+APP      = fsync-server
 
 SRCEXT   = cpp
 SRCDIR   = ./
@@ -19,7 +19,7 @@ INCLUDES = -I./..
 DEBUG    = -g
 OPTIMALIZATION = -O3
 CFLAGS   = -c -Wall `sdl-config --cflags` $(INCLUDES) $(DEBUG)
-LDFLAGS  = `sdl-config --libs` -lboost_system -lboost_filesystem -lboost_thread \
+LDFLAGS  = -lboost_system -lboost_filesystem \
 			$(shell find $(OBJDIR) $(COMMONOBJS) -maxdepth 1 -name '*.o')
 
 .PHONY: all clean distclean
