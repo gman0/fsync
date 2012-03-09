@@ -21,6 +21,7 @@
 #include <cstdlib>
 #include <string>
 #include <utility>
+#include <unistd.h>
 #include "FSException.h"
 #include "Server.h"
 #include "FileGatherer.h"
@@ -32,53 +33,58 @@
 using namespace std;
 using namespace boost::filesystem;
 
-Server::Server(int argc, char ** argv) : AppInterface(argc, argv), m_rollbackSolver(0), m_willRollback(false)
+Server::Server(int argc, char ** argv) :
+	AppInterface(argc, argv),
+	m_pathTransform(0),
+	m_fileGatherer(0),
+	m_networkManager(0),
+	m_rollbackSolver(0),
+	m_willRollback(false)
 {
 	ID_Path_pairList id_path_pairList = m_config->getPathList();
 	m_pathTransform = new PathTransform(id_path_pairList);
 	m_fileGatherer = new FileGatherer(m_config, m_pathTransform, id_path_pairList);
-	m_rollbackSolver = new Rollback(m_config, m_fileGatherer);
 
-	if (exists(m_config->getRollbackFilePath()))
+	if (!m_config->updateDbAndQuit())
 	{
-		m_fileGatherer->setRollbackSolver(m_rollbackSolver);
-		m_rollbackSolver->buildRollbackProxies();
-		m_willRollback = true;
+		m_rollbackSolver = new Rollback(m_config, m_fileGatherer);
 
-		cout << "fsync has detected " << m_rollbackSolver->getRollbackProxyVector().size() <<
-				" rollbacks from the previous session and will try to redo the actions." << endl;
+		if (exists(m_config->getRollbackFilePath()) && !m_config->ignoreRb())
+		{
+			m_fileGatherer->setRollbackSolver(m_rollbackSolver);
+			m_rollbackSolver->buildRollbackProxies();
+			m_willRollback = true;
+
+			cout << "fsync has detected " << m_rollbackSolver->getRollbackProxyVector().size() <<
+					" rollback(s) from the previous session and will try to redo the actions." << endl;
+		}
+
+		cout << "Gathering changes..." << flush;
+		m_proxyVector = m_fileGatherer->getChanges();
+
+		m_networkManager = new NetworkManager(m_config->getPort(), m_config->getRecvTimeout(),
+												m_config->getSendTimeout());
+
+		getClient();
+
+		transferFiles();
+
+		// recieve the last packet
+		PacketHeader ph_final;
+		m_networkManager->recv(&ph_final, sizeof(PacketHeader));
+
+		m_networkManager->closeConnection();
+
+		if (ph_final.m_type == PACKET_FINISHED)
+			cout << "Synchronization finished successfuly." << endl;
+		else
+			cout << "There was an error during synchronization." << endl;
+
+		if (m_proxyVector.size() > 0)
+			updateDb();
 	}
-
-	cout << "Gathering changes..." << flush;
-	m_proxyVector = m_fileGatherer->getChanges();
-
-	m_networkManager = new NetworkManager(m_config->getPort(), m_config->getRecvTimeout(),
-											m_config->getSendTimeout());
-
-	getClient();
-
-	transferFiles();
-
-	// recieve the last packet
-	PacketHeader ph_final;
-	m_networkManager->recv(&ph_final, sizeof(PacketHeader));
-
-	m_networkManager->closeConnection();
-
-	if (ph_final.m_type == PACKET_FINISHED)
-		cout << "Synchronization finished successfuly." << endl;
 	else
-		cout << "There was an error during synchronization." << endl;
-
-
-	processRollbacks();
-
-	if (m_proxyVector.size() > 0)
-	{
-		cout << "Updating database..." << flush;
-		m_fileGatherer->updateDb();
-		cout << "done." << endl;
-	}
+		updateDb();
 }
 
 Server::~Server()
@@ -91,6 +97,16 @@ Server::~Server()
 	delete m_pathTransform;
 }
 
+void Server::updateDb()
+{
+	if (m_config->dontSaveDb())
+		return;
+
+	cout << "Updating database..." << flush;
+	m_fileGatherer->updateDb();
+	cout << "done." << endl;
+}
+
 void Server::getClient()
 {
 	cout << "Waiting for client..." << endl;
@@ -98,7 +114,7 @@ void Server::getClient()
 	m_networkManager->listen();
 
 	while (!m_networkManager->acceptConnection())
-		SDL_Delay(100);
+		sleep(1);
 
 	char address[INET_ADDRSTRLEN];
 	m_networkManager->getClientAddress(address, sizeof(address));
@@ -119,7 +135,7 @@ void Server::transferFilesLoop(const FileGatherer::FIProxyPtrVector & proxies)
 			handleChange(unpackFromHeader<bool>(&ph, PACKET_RESPONE_FREE_SPACE_A_CHANGE), *proxyIt);
 		else if (ph.m_type == PACKET_NEXT)
 			continue;
-		else
+		else // something has gone wrong
 			addRollback(*proxyIt);
 	}
 }
