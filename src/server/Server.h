@@ -48,6 +48,8 @@ class Server : public AppInterface
 		Server(const Server & s);
 		const Server & operator=(const Server & s);
 
+		void updateDb();
+
 		void getClient();
 		void transferFilesLoop(const FileGatherer::FIProxyPtrVector & proxies);
 		void transferFiles();
