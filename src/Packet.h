@@ -20,7 +20,6 @@
 #ifndef PACKET_H
 #define PACKET_H
 
-#include <SDL/SDL.h>
 #include <boost/filesystem.hpp>
 #include <cstring>
 #include "defs.h"
