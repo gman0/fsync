@@ -121,7 +121,7 @@ PathList PathTransform::getExcludingPaths()
 bool PathTransform::isExcluded(const path & currentPath, PathId pathId)
 {
 	vector<path> absoluteExcldPaths;
-	path parentPath = getPath(pathId).parent_path();
+	path parentPath = getPath(pathId);
 	PathId excldPathId = pathId * -1;
 
 	for (ID_Path_pairList::const_iterator i = m_id_path_pairList.begin(); i != m_id_path_pairList.end(); i++)
