@@ -68,7 +68,7 @@ using namespace boost::filesystem;
 	"\t-c config file  --config-file\tRead settings from user specified config file.\n"
 
 #define OPT "hvs:p:"
-#define OPT_HELP "[-hv] [s HOST] [p PORT] [c PATH TO CONFIG FILE]"
+#define OPT_HELP "[-hv] [-s HOST] [-p PORT] [-c PATH TO CONFIG FILE]"
 #define LOG_FILE "fsync_client.log"
 #define CONF_FILE "client.conf"
 
