@@ -44,11 +44,12 @@ class ProcessFileInterface
 		std::fstream & m_file;
 		size_t m_dataLen;
 		unsigned int m_blocksCount;
+		unsigned char * m_buffer;
 		CHUNK_TYPE m_chunkType;
 
 	public:
-		ProcessFileInterface(std::fstream & file) : m_file(file), m_dataLen(0), m_blocksCount(0),
-													m_chunkType(CHUNK_NONE)
+		ProcessFileInterface(std::fstream & file, unsigned char * buf) :
+			m_file(file), m_dataLen(0), m_blocksCount(0), m_buffer(buf), m_chunkType(CHUNK_NONE)
 		{}
 
 		void prepare();

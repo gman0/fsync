@@ -32,7 +32,7 @@ class ProcessFile_load : public ProcessFileInterface
 		PacketData * m_block;
 
 	public:
-		ProcessFile_load(const char * filePath);
+		ProcessFile_load(const char * filePath, unsigned char * buf);
 		~ProcessFile_load();
 
 		inline void setOffset(offset_t offset) { m_file.seekg(offset); }

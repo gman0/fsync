@@ -88,9 +88,7 @@ hash_t ProcessFileInterface::getHash(const ProcessFileInterface::ChunkInfo & ci)
 {
 	assert(ci.second <= m_dataLen);
 
-	unsigned char * buf = new unsigned char[ci.first];
 	int len;
-
 	size_t spaceLeft = ci.first + ci.second;
 
 	if (spaceLeft >= m_dataLen)
@@ -99,12 +97,10 @@ hash_t ProcessFileInterface::getHash(const ProcessFileInterface::ChunkInfo & ci)
 		len = ci.first;
 
 	m_file.seekg(ci.second);
-	m_file.readsome((char*)buf, len);
+	m_file.readsome((char*)m_buffer, len);
 	m_file.seekg(ci.second); // go back where we were before
 
-	hash_t hash = calculateHash(buf, len);
-
-	delete [] buf;
+	hash_t hash = calculateHash(m_buffer, len);
 
 	return hash;
 }

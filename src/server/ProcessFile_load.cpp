@@ -22,17 +22,16 @@
 
 using namespace std;
 
-ProcessFile_load::ProcessFile_load(const char * filePath) : ProcessFileInterface(m_file), m_block(0)
+ProcessFile_load::ProcessFile_load(const char * filePath, unsigned char * buf) :
+	ProcessFileInterface(m_file, buf), m_block(0)
 {
 	m_file.open(filePath, ios::in);
 	prepare();
+	m_block = (PacketData*)buf;
 }
 
 ProcessFile_load::~ProcessFile_load()
 {
-	if (m_block)
-		delete m_block;
-
 	m_file.close();
 }
 
@@ -40,11 +39,6 @@ PacketData * ProcessFile_load::getBlock(offset_t offset)
 {
 	if (offset >= m_dataLen)
 		return 0;
-
-	if (m_block)
-		delete m_block;
-
-	m_block = new PacketData;
 
 	m_file.seekg(offset);
 	m_file.readsome((char*)m_block->m_buffer, getBlockSize(offset));

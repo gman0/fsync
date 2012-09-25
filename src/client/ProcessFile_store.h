@@ -11,13 +11,13 @@ class ProcessFile_store : public ProcessFileInterface
 		std::fstream m_file;
 
 	public:
-		ProcessFile_store(const char * filePath, size_t size);
+		ProcessFile_store(const char * filePath, size_t size, unsigned char * buf);
 
 		/*
 		 * This constructor assumes that the file exists and also
 		 * opens it both for reading and writing.
 		 */
-		ProcessFile_store(const char * filePath);
+		ProcessFile_store(const char * filePath, unsigned char * buf);
 		~ProcessFile_store();
 
 		inline void setOffset(offset_t offset) { m_file.seekp(offset); }
