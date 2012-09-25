@@ -69,6 +69,7 @@ Server::Server(int argc, char ** argv) :
 
 		m_buffer = new unsigned char[ProcessFileInterface::LARGE_CHUNK];
 
+
 		transferFiles();
 
 		// recieve the last packet
@@ -269,10 +270,18 @@ PacketHeader Server::packFileInfo(const FileGatherer::FileInfo * fi, short int f
 	ph_fi.m_action = (PacketHeader_FileInfo::ACTION)m_fileGatherer->getAction(flags);
 
 	if (ph_fi.m_action != PacketHeader_FileInfo::A_DELETE)
+	{
 		ph_fi.m_size = file_size(path(fi->m_path));
+
+		if (m_config->storeChangeTimestamp())
+			ph_fi.m_lastWrite = fi->m_lastWrite;
+
+		if (m_config->storePermissions())
+			ph_fi.m_permissions = fi->m_permissions;
+	}
 	else
 		ph_fi.m_size = 0; // We can't use file_size on a deleted file
-	
+
 	cout << " (" << ph_fi.m_size << ")" << endl;
 
 	m_pathTransform->cutPath(fi->m_pathId, fi->m_path, ph_fi.m_path);

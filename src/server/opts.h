@@ -32,10 +32,12 @@
 	"\t-a  --dont-save-db\t\tDon't save file database on exit.\n" \
 	"\t-u  --update-db\t\t\tUpdate file database and quit.\n" \
 	"\t-i  --ignore-db\t\t\tIgnore file database, mark all files as new.\n" \
-	"\t-r  --ignore-rb\t\t\tIgnore rollbacks."
+	"\t-r  --ignore-rb\t\t\tIgnore rollbacks.\n" \
+	"\t-t  --store-timestamp\t\tStore file's timestamp.\n" \
+	"\t-m  --store-permissions\t\tStore file's permissions.\n"
 
-#define OPT "hvp:c:d:auir"
-#define OPT_HELP "[-hvauir] [-p PORT] [-c PATH TO CONFIG FILE] [-d PATH TO FILE DATABASE]"
+#define OPT "hvp:c:d:auirtm"
+#define OPT_HELP "[-hvauirtm] [-p PORT] [-c PATH TO CONFIG FILE] [-d PATH TO FILE DATABASE]"
 #define LOG_FILE "fsync_server.log"
 #define CONF_FILE "server.conf"
 

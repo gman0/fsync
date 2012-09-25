@@ -286,10 +286,12 @@ FileGatherer::FIProxyPtrVector FileGatherer::getChanges()
 FileGatherer::FileInfo FileGatherer::assembleFileInfo(const PathId id, const path & p)
 {
 	FileInfo fi;
+
 	fi.m_pathId = id;
 	strcpy(fi.m_path, p.c_str());
 	fi.m_hash = calculateHash((const unsigned char*)fi.m_path, strlen(fi.m_path));
 	fi.m_lastWrite = last_write_time(p);
+	fi.m_permissions = status(p).permissions();
 
 	return fi;
 }
@@ -310,7 +312,8 @@ void FileGatherer::generateIndices(const hash_t & hash, short int * indices)
 	}
 }
 
-bool FileGatherer::checkPairExistence(const short int * indices, const hash_t & hash, FileGatherer::FileInfoProxy * proxy)
+bool FileGatherer::checkPairExistence(const short int * indices, const hash_t & hash,
+										FileGatherer::FileInfoProxy * proxy)
 {
 	HashTreePtr ht_ptr = m_hashTree[indices[0]][indices[1]][indices[2]];
 

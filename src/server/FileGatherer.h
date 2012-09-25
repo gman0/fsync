@@ -44,8 +44,9 @@ class FileGatherer
 			char m_path[PATH_LENGTH];
 			hash_t m_hash;
 			time_t m_lastWrite;
+			unsigned m_permissions;
 
-			FileInfo() : m_hash(0) {}
+			FileInfo() : m_hash(0), m_lastWrite(0), m_permissions(0) {}
 
 			FileInfo(const FileInfo & fi)
 			{
@@ -53,6 +54,7 @@ class FileGatherer
 				strcpy(m_path, fi.m_path);
 				m_hash = fi.m_hash;
 				m_lastWrite = fi.m_lastWrite;
+				m_permissions = fi.m_permissions;
 			}
 
 			bool operator==(const FileInfo & fi)
@@ -77,6 +79,7 @@ class FileGatherer
 				strcpy(m_path, fi.m_path);
 				m_hash = fi.m_hash;
 				m_lastWrite = fi.m_lastWrite;
+				m_permissions = fi.m_permissions;
 
 				return *this;
 			}

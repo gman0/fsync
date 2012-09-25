@@ -92,7 +92,8 @@ void Client::fileTransfer()
 
 		if (canProceed)
 		{
-			cout << ph_fi.m_path << " (" << ph_fi.m_size << ")" << endl;
+			// cout << ph_fi.m_path << " (" << ph_fi.m_size << ")" << endl;
+
 			if (ph.m_type == PACKET_NEXT || ph.m_type == PACKET_SKIP)
 				continue;
 			else if (ph.m_type == PACKET_RESPONE_FREE_SPACE_A_NEW)
@@ -210,6 +211,12 @@ void Client::handleNew(const PacketHeader_FileInfo * ph_fi)
 		m_networkManager->recv(&data, sizeof(PacketData));
 		file.feedNextBlock(&data);
 	}
+
+	if (ph_fi->m_lastWrite)
+		last_write_time(filePath, ph_fi->m_lastWrite);
+
+	if (ph_fi->m_permissions)
+		permissions(filePath, (perms)ph_fi->m_permissions);
 }
 
 void Client::handleChange(const PacketHeader_FileInfo * ph_fi)
