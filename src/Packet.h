@@ -95,11 +95,6 @@ struct PacketData
  * ========= PACKET HEADERS =========
  */
 
-struct PacketHeader_Interface
-{
-	char m_path[480];
-};
-
 struct PacketHeader_FileInfo
 {
 	/*
