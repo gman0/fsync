@@ -56,6 +56,9 @@ class Config : public ConfigOptions, public ConfigParser
 		bool ignoreDb();
 		bool ignoreRb();
 
+		bool storeChangeTimestamp();
+		bool storePermissions();
+
 	private:
 		inline bool checkKey(const std::string & key) { return !key.empty(); }
 };

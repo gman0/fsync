@@ -38,6 +38,9 @@ static const option g_options[] = {
 	{"update-db",	no_argument,		0,	'u'},
 	{"ignore-db",	no_argument,		0,	'i'},
 	{"ignore-rb",	no_argument,		0,	'r'},
+
+	{"store-timestamp",no_argument,		0,	't'},
+	{"store-permissions",no_argument,	0,	'm'},
 	{0,				0,					0,	  0}
 };
 
@@ -64,6 +67,8 @@ class ConfigOptions
 		bool updateDb();
 		bool ignoreDb();
 		bool ignoreRb();
+		bool storeTimestamp();
+		bool storePermissions();
 
 	private:
 		void setHost(const char * host);
@@ -74,6 +79,8 @@ class ConfigOptions
 		void setUpdateDb();
 		void setIgnoreDb();
 		void setIgnoreRb();
+		void setStoreTimestamp();
+		void setStorePermissions();
 
 		bool checkEntry(const std::string & key);
 };

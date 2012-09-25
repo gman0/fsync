@@ -108,3 +108,15 @@ bool Config::updateDbAndQuit()
 {
 	return ConfigOptions::updateDb();
 }
+
+bool Config::storeChangeTimestamp()
+{
+	bool store = ConfigParser::storeChangeTimestamp();
+	return (ConfigOptions::storeTimestamp()) ? true : store;
+}
+
+bool Config::storePermissions()
+{
+	bool store = ConfigParser::storePermissions();
+	return (ConfigOptions::storePermissions()) ? true : store;
+}

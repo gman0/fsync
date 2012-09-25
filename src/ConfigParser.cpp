@@ -337,7 +337,7 @@ unsigned int ConfigParser::getRecvTimeout()
 
 	if (l.empty())
 		return 0;
-	
+
 	return atoi(l.back().c_str());
 }
 
@@ -347,7 +347,27 @@ unsigned int ConfigParser::getSendTimeout()
 
 	if (l.empty())
 		return 0;
-	
+
 	return atoi(l.back().c_str());
 
+}
+
+bool ConfigParser::storeChangeTimestamp()
+{
+	list<string> l = m_pairs["store_change_timestamp"];
+
+	if (l.empty())
+		return false;
+
+	return string2bool(l.back());
+}
+
+bool ConfigParser::storePermissions()
+{
+	list<string> l = m_pairs["store_permissions"];
+
+	if (l.empty())
+		return false;
+
+	return string2bool(l.back());
 }

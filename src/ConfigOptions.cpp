@@ -75,6 +75,14 @@ ConfigOptions::ConfigOptions(int argc, char ** argv, const char * optStr, const 
 			case 'r':
 				setIgnoreRb();
 				break;
+
+			case 't':
+				setStoreTimestamp();
+				break;
+
+			case 'm':
+				setStorePermissions();
+				break;
 		}
 	}
 }
@@ -137,6 +145,16 @@ void ConfigOptions::setIgnoreRb()
 	m_optionsMap["ignore_rb"] = '1';
 }
 
+void ConfigOptions::setStoreTimestamp()
+{
+	m_optionsMap["store_change_timestamp"] = '1';
+}
+
+void ConfigOptions::setStorePermissions()
+{
+	m_optionsMap["store_permissions"] = '1';
+}
+
 string & ConfigOptions::getHost()
 {
 	return m_optionsMap["host"];
@@ -175,4 +193,14 @@ bool ConfigOptions::ignoreDb()
 bool ConfigOptions::ignoreRb()
 {
 	return checkEntry("ignore_rb");
+}
+
+bool ConfigOptions::storeTimestamp()
+{
+	return checkEntry("store_change_timestamp");
+}
+
+bool ConfigOptions::storePermissions()
+{
+	return checkEntry("store_permissions");
 }

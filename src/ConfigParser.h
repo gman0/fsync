@@ -84,6 +84,8 @@ class ConfigParser
 		boost::filesystem::path getFileDbPath();
 		unsigned int getRecvTimeout();
 		unsigned int getSendTimeout();
+		bool storeChangeTimestamp();
+		bool storePermissions();
 
 	private:
 		void generatePairs(const std::string & configBuffer);
