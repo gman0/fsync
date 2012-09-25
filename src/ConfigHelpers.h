@@ -25,6 +25,10 @@
 
 static boost::filesystem::path getFsyncHomePath()
 {
+#ifdef _WIN32
+	return boost::filesystem::path(getenv("HOMEDRIVE")) / getenv("HOMEPATH") / "fsync";
+#endif
+
 	return boost::filesystem::path(getenv("HOME")) / ".fsync";
 }
 
