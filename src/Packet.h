@@ -113,15 +113,19 @@ struct PacketHeader_FileInfo
 	ACTION m_action;
 	uint64_t m_size;
 	char m_path[PATH_LENGTH];
+	time_t m_lastWrite;
+	unsigned m_permissions;
 
-	PacketHeader_FileInfo() : m_pathId(0), m_action(A_NONE), m_size(0) {}
+	PacketHeader_FileInfo() : m_pathId(0), m_action(A_NONE), m_size(0), m_lastWrite(0), m_permissions(0) {}
 
-	PacketHeader_FileInfo(short int pathId, ACTION action, uint64_t size, const char * path)
+	PacketHeader_FileInfo(short int pathId, ACTION action, uint64_t size, const char * path, time_t lastWrite, unsigned perms)
 	{
 		m_pathId = pathId;
 		m_action = action;
 		m_size = size;
 		strcpy(m_path, path);
+		m_lastWrite = lastWrite;
+		m_permissions = perms;
 	}
 
 	PacketHeader_FileInfo(const PacketHeader_FileInfo & ph_fi)
@@ -130,6 +134,8 @@ struct PacketHeader_FileInfo
 		m_action = ph_fi.m_action;
 		m_size = ph_fi.m_size;
 		strcpy(m_path, ph_fi.m_path);
+		m_lastWrite = ph_fi.m_lastWrite;
+		m_permissions = ph_fi.m_permissions;
 	}
 
 	const PacketHeader_FileInfo & operator=(const PacketHeader_FileInfo & ph_fi)
@@ -138,6 +144,8 @@ struct PacketHeader_FileInfo
 		m_action = ph_fi.m_action;
 		strcpy(m_path, ph_fi.m_path);
 		m_size = ph_fi.m_size;
+		m_lastWrite = ph_fi.m_lastWrite;
+		m_permissions = ph_fi.m_permissions;
 
 		return *this;
 	}
