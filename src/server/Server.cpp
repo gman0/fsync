@@ -112,7 +112,7 @@ void Server::updateDb()
 
 void Server::getClient()
 {
-	cout << "Waiting for client..." << endl;
+	cout << "Waiting for client (^C to quit)..." << endl;
 
 	m_networkManager->listen();
 
@@ -130,16 +130,20 @@ void Server::transferFilesLoop(const FileGatherer::FIProxyPtrVector & proxies)
 	for (FileGatherer::FIProxyPtrVector::const_iterator proxyIt = proxies.begin();
 		proxyIt != proxies.end(); proxyIt++)
 	{
-		PacketHeader ph = prepareFileTransfer(*proxyIt);
+		FileGatherer::FileInfoProxy * proxy = *proxyIt;
+
+		cout << m_fileGatherer->getFileInfo(proxy).m_path;
+
+		PacketHeader ph = prepareFileTransfer(proxy);
 
 		if (ph.m_type == PACKET_RESPONE_FREE_SPACE_A_NEW)
-			handleNew(unpackFromHeader<bool>(&ph, PACKET_RESPONE_FREE_SPACE_A_NEW), *proxyIt);
+			handleNew(unpackFromHeader<bool>(&ph, PACKET_RESPONE_FREE_SPACE_A_NEW), proxy);
 		else if (ph.m_type == PACKET_RESPONE_FREE_SPACE_A_CHANGE)
-			handleChange(unpackFromHeader<bool>(&ph, PACKET_RESPONE_FREE_SPACE_A_CHANGE), *proxyIt);
+			handleChange(unpackFromHeader<bool>(&ph, PACKET_RESPONE_FREE_SPACE_A_CHANGE), proxy);
 		else if (ph.m_type == PACKET_NEXT)
 			continue;
 		else // something has gone wrong
-			addRollback(*proxyIt);
+			addRollback(proxy);
 	}
 }
 
@@ -268,6 +272,8 @@ PacketHeader Server::packFileInfo(const FileGatherer::FileInfo * fi, short int f
 		ph_fi.m_size = file_size(path(fi->m_path));
 	else
 		ph_fi.m_size = 0; // We can't use file_size on a deleted file
+	
+	cout << " (" << ph_fi.m_size << ")" << endl;
 
 	m_pathTransform->cutPath(fi->m_pathId, fi->m_path, ph_fi.m_path);
 

@@ -65,7 +65,7 @@ void Client::getServer(const string & host)
 {
 	if (!m_networkManager->connectToServer())
 	{
-		cout << "Waiting for server..." << endl;
+		cout << "Waiting for server (^C to quit)..." << endl;
 
 		while (!m_networkManager->connectToServer())
 			sleep(1);
@@ -92,6 +92,7 @@ void Client::fileTransfer()
 
 		if (canProceed)
 		{
+			cout << ph_fi.m_path << " (" << ph_fi.m_size << ")" << endl;
 			if (ph.m_type == PACKET_NEXT || ph.m_type == PACKET_SKIP)
 				continue;
 			else if (ph.m_type == PACKET_RESPONE_FREE_SPACE_A_NEW)
