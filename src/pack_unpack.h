@@ -28,7 +28,7 @@
 
 template <typename T> PacketHeader packToHeader(const T * t, PACKET_TYPE_ID packetType)
 {
-	assert(HEADER_BUFF_SIZE >= sizeof(T));
+	assert(HEADER_BUFF_SIZE > sizeof(T));
 	return PacketHeader(packetType, t, sizeof(T));
 }
 
