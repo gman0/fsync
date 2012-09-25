@@ -35,6 +35,7 @@ class Client : public AppInterface
 	private:
 		NetworkManager * m_networkManager;
 		PathTransform * m_pathTransform;
+		unsigned char * m_buffer;
 
 	public:
 		Client(int argc, char ** argv);

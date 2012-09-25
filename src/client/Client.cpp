@@ -41,6 +41,8 @@ Client::Client(int argc, char ** argv) : AppInterface(argc, argv)
 
 	getServer(host);
 
+	m_buffer = new unsigned char[ProcessFileInterface::LARGE_CHUNK];
+
 	fileTransfer();
 
 	PacketHeader ph_final;
@@ -54,6 +56,7 @@ Client::~Client()
 {
 	cout << "Synchronization finished, quitting..." << endl;
 
+	delete [] m_buffer;
 	delete m_networkManager;
 	delete m_pathTransform;
 }
@@ -195,7 +198,7 @@ void Client::handleNew(const PacketHeader_FileInfo * ph_fi)
 	if (!exists(parentPath))
 		create_directories(parentPath);
 
-	ProcessFile_store file(filePath.c_str(), ph_fi->m_size);
+	ProcessFile_store file(filePath.c_str(), ph_fi->m_size, m_buffer);
 
 	unsigned int blocksCount = ProcessFileInterface::getBlocksCount(ph_fi->m_size);
 
@@ -213,7 +216,7 @@ void Client::handleChange(const PacketHeader_FileInfo * ph_fi)
 	path filePath = m_pathTransform->glueCutPath(ph_fi->m_pathId, ph_fi->m_path);
 	resize_file(filePath, ph_fi->m_size);
 
-	ProcessFile_store file(filePath.c_str());
+	ProcessFile_store file(filePath.c_str(), m_buffer);
 
 	while (!chunkSearchAndStore(&file))
 		continue;

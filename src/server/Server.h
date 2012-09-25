@@ -40,6 +40,8 @@ class Server : public AppInterface
 		FileGatherer::FIProxyPtrVector m_rollbackProxyVector;
 		bool m_willRollback;
 
+		unsigned char * m_buffer;
+
 	public:
 		Server(int argc, char ** argv);
 		~Server();

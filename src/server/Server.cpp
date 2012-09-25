@@ -67,6 +67,8 @@ Server::Server(int argc, char ** argv) :
 
 		getClient();
 
+		m_buffer = new unsigned char[ProcessFileInterface::LARGE_CHUNK];
+
 		transferFiles();
 
 		// recieve the last packet
@@ -91,6 +93,7 @@ Server::~Server()
 {
 	cout << "Quitting..." << endl;
 
+	delete [] m_buffer;
 	delete m_networkManager;
 	delete m_rollbackSolver;
 	delete m_fileGatherer;
@@ -179,7 +182,7 @@ void Server::handleNew(bool hasFreeSpace, FileGatherer::FileInfoProxy * proxy)
 {
 	if (hasFreeSpace)
 	{
-		ProcessFile_load file(m_fileGatherer->getFileInfo(proxy).m_path);
+		ProcessFile_load file(m_fileGatherer->getFileInfo(proxy).m_path, m_buffer);
 
 		unsigned int blocksCount = file.getBlocksCount();
 
@@ -194,7 +197,7 @@ void Server::handleChange(bool hasFreeSpace, FileGatherer::FileInfoProxy * proxy
 {
 	if (hasFreeSpace)
 	{
-		ProcessFile_load file(m_fileGatherer->getFileInfo(proxy).m_path);
+		ProcessFile_load file(m_fileGatherer->getFileInfo(proxy).m_path, m_buffer);
 
 		// search for chunks and send them
 		recursiveChunkSearch(&file, file.getSize());
