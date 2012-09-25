@@ -39,38 +39,11 @@ using namespace boost::filesystem;
 
 #ifdef SERVER_H
 
-#define PACKAGE "fsync-server (fsync)"
-#define VERSION "1.0.0"
-#define HELP \
-	"\t-h  --help\t\t\tShow this message.\n" \
-	"\t-v  --version\t\t\tShow version.\n" \
-	"\t-p port  --port\t\t\tSet port.\n" \
-	"\t-c config file  --config-file\tRead settings from user specified config file.\n" \
-	"\t-d database file  --db-file\tRead file database from user specified file.\n" \
-	"\t-a  --dont-save-db\t\tDon't save file database on exit.\n" \
-	"\t-u  --update-db\t\t\tUpdate file database and quit.\n" \
-	"\t-i  --ignore-db\t\t\tIgnore file database, mark all files as new.\n" \
-	"\t-r  --ignore-rb\t\t\tIgnore rollbacks."
-
-#define OPT "hvp:c:d:auir"
-#define OPT_HELP "[-hvauir] [-p PORT] [-c PATH TO CONFIG FILE] [-d PATH TO FILE DATABASE]"
-#define LOG_FILE "fsync_server.log"
-#define CONF_FILE "server.conf"
+#include "server/opts.h"
 
 #else
-#define PACKAGE "fsync-client (fsync)"
-#define VERSION "1.0.0"
-#define HELP \
-	"\t-h  --help\t\t\tShow this message.\n" \
-	"\t-v  --version\t\t\tShow version.\n" \
-	"\t-s host  --host\t\t\tSet host.\n" \
-	"\t-p port  --port\t\t\tSet port.\n" \
-	"\t-c config file  --config-file\tRead settings from user specified config file.\n"
 
-#define OPT "hvs:p:"
-#define OPT_HELP "[-hv] [-s HOST] [-p PORT] [-c PATH TO CONFIG FILE]"
-#define LOG_FILE "fsync_client.log"
-#define CONF_FILE "client.conf"
+#include "client/opts.h"
 
 #endif
 
@@ -89,7 +62,6 @@ class AppInterface
 
 			LogManager::instance(fsyncPath / LOG_FILE);
 			m_config = new Config(argc, argv, fsyncPath / CONF_FILE, OPT, PACKAGE, VERSION, DESCRIPTION, HELP, OPT_HELP);
-
 		}
 
 		virtual ~AppInterface()
